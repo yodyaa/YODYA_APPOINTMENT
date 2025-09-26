@@ -17,7 +17,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
     const addOns = job.appointmentInfo?.addOns || [];
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-primary p-4 text-white">
                 <div className="flex justify-between items-center">
                     <div>
@@ -59,7 +59,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
                 <div className="flex justify-between items-center">
                     <button 
                         onClick={() => onQrCodeClick(job.id)}
-                        className="bg-primary-dark text-white py-2 px-4 rounded-lg font-semibold text-sm hover:bg-slate-600 transition-colors"
+                        className="bg-primary-dark text-white py-2 px-4 rounded-md font-semibold text-sm hover:bg-slate-600 transition-colors"
                     >
                         QR Code
                     </button>
@@ -68,7 +68,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
                             <button 
                                 onClick={() => onConfirmClick(job)}
                                 disabled={isConfirming}
-                                className=" bg-primary text-white py-2 px-4 rounded-lg font-semibold text-sm hover:bg-green-600 transition-colors disabled:bg-gray-400"
+                                className=" bg-primary text-white py-2 px-4 rounded-md font-semibold text-sm hover:bg-green-600 transition-colors disabled:bg-gray-400"
                             >
                                 {isConfirming ? '...' : 'ยืนยัน'}
                             </button>
@@ -81,7 +81,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
                         {job.status !== 'in_progress' && job.status !== 'confirmed' && (
                             <button 
                                 onClick={() => onCancelClick(job)}
-                                className="bg-error text-white py-2 px-4 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors"
+                                className="bg-error text-white py-2 px-4 rounded-md font-semibold text-sm hover:bg-red-200 transition-colors"
                             >
                                 ยกเลิก
                             </button>
