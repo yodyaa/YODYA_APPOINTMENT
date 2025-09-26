@@ -57,7 +57,7 @@ export default function CustomerHeader({ showBackButton = false, showActionButto
             </header>
 
             {showActionButtons && (
-                <div className=" grid grid-cols-2 gap-4">
+                <div className=" grid grid-cols-2 gap-4 mt-2">
                     <button
                         onClick={() => router.push('/appointment')}
                         className="bg-secondary text-primary shadow-sm rounded-md py-2 font-semibold text-md hover:shadow-md transition-shadow"
@@ -77,3 +77,4 @@ export default function CustomerHeader({ showBackButton = false, showActionButto
         </div>
     );
 }
+
