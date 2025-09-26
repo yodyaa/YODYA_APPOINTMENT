@@ -61,11 +61,6 @@ export default function LoginPage() {
   return (
     <main className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
-        
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-800">BEAUTYTHIP</h1>
-          <p className="text-gray-500">ระบบจองบริการเสริมความงาม</p>
-        </div>
 
         {/* Customer & Beautician Section */}
         <div className="p-6 border rounded-lg bg-gray-50">
