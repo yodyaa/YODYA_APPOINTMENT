@@ -138,6 +138,7 @@ export default function BeauticiansListPage() {
                 <thead className="bg-gray-50">
                     <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">พนักงาน</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ตำแหน่ง</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">เบอร์โทร</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
                         <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
@@ -163,6 +164,7 @@ export default function BeauticiansListPage() {
                                     </div>
                                 </div>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{beautician.position || '-'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{beautician.phoneNumber}</td>
                             <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={beautician.status} /></td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">

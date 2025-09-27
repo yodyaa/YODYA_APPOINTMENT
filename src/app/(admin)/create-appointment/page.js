@@ -676,28 +676,28 @@ export default function CreateAppointmentPage() {
                                         ) : (
                                             <div className="grid grid-cols-3 gap-3">
                                                 {bookingSettings.timeQueues
-                                                    .filter(q => q.time && isTimeInBusinessHours(q.time))
+                                                    .filter(q => q.time)
                                                     .sort((a, b) => String(a.time).localeCompare(String(b.time)))
                                                     .map(queue => {
                                                         const slot = queue.time;
                                                         const max = bookingSettings.useBeautician ? beauticians.length : (queue.count || bookingSettings.totalBeauticians);
-                                                const booked = slotCounts[slot] || 0;
-                                                const isFull = booked >= max;
-                                                return (
-                                                    <button
-                                                        key={slot}
-                                                        type="button"
-                                                        onClick={() => !isFull && setAppointmentTime(slot)}
-                                                        className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors
-                                                            ${appointmentTime === slot ? 'bg-primary text-white shadow-lg' : 'bg-white text-primary border border-purple-100 hover:bg-purple-50'}
-                                                            ${isFull ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
-                                                        disabled={isFull}
-                                                        title={isFull ? 'คิวเต็ม' : ''}
-                                                    >
-                                                        {slot} {isFull && <span className="text-xs">(เต็ม)</span>}
-                                                    </button>
-                                                );
-                                            })}
+                                                        const booked = slotCounts[slot] || 0;
+                                                        const isFull = booked >= max;
+                                                        return (
+                                                            <button
+                                                                key={slot}
+                                                                type="button"
+                                                                onClick={() => !isFull && setAppointmentTime(slot)}
+                                                                className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors
+                                                                    ${appointmentTime === slot ? 'bg-primary text-white shadow-lg' : 'bg-white text-primary border border-purple-100 hover:bg-purple-50'}
+                                                                    ${isFull ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
+                                                                disabled={isFull}
+                                                                title={isFull ? 'คิวเต็ม' : ''}
+                                                            >
+                                                                {slot} {isFull && <span className="text-xs">(เต็ม)</span>}
+                                                            </button>
+                                                        );
+                                                    })}
                                             </div>
                                         )}
                                     </div>

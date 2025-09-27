@@ -16,7 +16,8 @@ export default function EditBeauticianPage() {
     phoneNumber: '',
     lineUserId: '',
     imageUrl: '',
-    status: 'available'
+    status: 'available',
+    position: ''
   });
   // [!code focus end]
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,7 @@ export default function EditBeauticianPage() {
             lineUserId: data.lineUserId || '',
             imageUrl: data.imageUrl || '',
             status: data.status || 'available',
+            position: data.position || ''
           });
           // [!code focus end]
         } else {
@@ -112,14 +114,18 @@ export default function EditBeauticianPage() {
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
-                    <input type="text" name="lineUserId" placeholder="U12345..." value={formData.lineUserId} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">URL รูปภาพ (ถ้ามี)</label>
-                    <input type="url" name="imageUrl" placeholder="https://example.com/photo.jpg" value={formData.imageUrl} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
-                </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">ตำแหน่ง</label>
+          <input type="text" name="position" placeholder="เช่น ช่างหลัก, ผู้ช่วย" value={formData.position} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
+          <input type="text" name="lineUserId" placeholder="U12345..." value={formData.lineUserId} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">URL รูปภาพ (ถ้ามี)</label>
+          <input type="url" name="imageUrl" placeholder="https://example.com/photo.jpg" value={formData.imageUrl} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
                 <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400">
                   {loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
                 </button>

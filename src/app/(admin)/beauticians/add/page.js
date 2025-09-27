@@ -9,12 +9,13 @@ import { useToast } from '@/app/components/Toast';
 
 export default function AddBeauticianPage() {
   const [formData, setFormData] = useState({ 
-      firstName: '', 
-      lastName: '', 
-      phoneNumber: '', 
-      lineUserId: '',
-      imageUrl: '',
-      status: 'available'
+    firstName: '', 
+    lastName: '', 
+    phoneNumber: '', 
+    lineUserId: '',
+    imageUrl: '',
+    status: 'available',
+    position: ''
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -77,14 +78,18 @@ export default function AddBeauticianPage() {
             </select>
                     </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
-                    <input type="text" name="lineUserId" placeholder="U12345..." value={formData.lineUserId} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">URL รูปภาพ (ถ้ามี)</label>
-                    <input type="url" name="imageUrl" placeholder="https://example.com/photo.jpg" value={formData.imageUrl} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
-                </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">ตำแหน่ง</label>
+          <input type="text" name="position" placeholder="เช่น ช่างหลัก, ผู้ช่วย" value={formData.position} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
+          <input type="text" name="lineUserId" placeholder="U12345..." value={formData.lineUserId} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">URL รูปภาพ (ถ้ามี)</label>
+          <input type="url" name="imageUrl" placeholder="https://example.com/photo.jpg" value={formData.imageUrl} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+        </div>
                 <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white p-2 rounded-md hover:bg-gray-700 disabled:bg-gray-400">
                   {loading ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
                 </button>

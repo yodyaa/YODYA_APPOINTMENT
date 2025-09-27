@@ -30,12 +30,17 @@ const navLinks = [
   {
     name: "ข้อมูลหลัก",
     items: [
-      // [!code focus start]
       { name: "สร้างการนัดหมาย", href: "/create-appointment" },
-      // [!code focus end]
       { name: "บริการ", href: "/services" },
       { name: "ช่าง", href: "/beauticians" },
       { name: "ลูกค้า", href: "/customers" },
+    ]
+  },
+  {
+    name: "งาน",
+    items: [
+      { name: "ดูสถานะงานช่าง", href: "/workorder" },
+      { name: "สร้างงานใหม่", href: "/workorder/create" },
     ]
   },
   {
