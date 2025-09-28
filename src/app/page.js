@@ -38,7 +38,7 @@ export default function LoginPage() {
 
       if (verificationResult.isAdmin) {
         // 4. ถ้าเป็น admin จริง ให้ redirect ไปหน้า dashboard
-        router.push('dashboard');
+        router.push('monthly-dashboard');
       } else {
         // 5. ถ้าไม่ใช่ admin ให้ออกจากระบบและแสดงข้อผิดพลาด
         await signOut(auth);
@@ -66,7 +66,7 @@ export default function LoginPage() {
         <div className="p-6 border rounded-lg bg-gray-50">
           <h2 className="text-xl font-semibold text-center text-gray-700 mb-4">ระบบนัดหมาย บริการ</h2>
           <button 
-            onClick={() => router.push('/dashboard')} // Changed this line
+            onClick={() => router.push('/monthly-dashboard')} // Changed this line
             className="w-full flex items-center justify-center py-3 px-4 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition-colors"
           >
             เข้าสู่ระบบด้วย LINE

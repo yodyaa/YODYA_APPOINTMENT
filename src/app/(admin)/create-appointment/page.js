@@ -212,10 +212,15 @@ export default function CreateAppointmentPage() {
 
     const { basePrice, addOnsTotal, totalPrice, totalDuration } = useMemo(() => {
         if (!selectedService) return { basePrice: 0, addOnsTotal: 0, totalPrice: 0, totalDuration: 0 };
-        const base = selectedService.price || selectedService.basePrice || 0;
-        const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
-        const duration = (selectedService.duration || 0) + selectedAddOns.reduce((sum, a) => sum + (a.duration || 0), 0);
-        return { basePrice: base, addOnsTotal: addOnsPrice, totalPrice: base + addOnsPrice, totalDuration: duration };
+        const base = Number(selectedService.price || selectedService.basePrice || 0);
+        const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + Number(a.price || 0), 0);
+        const duration = Number(selectedService.duration || 0) + selectedAddOns.reduce((sum, a) => sum + Number(a.duration || 0), 0);
+        return { 
+            basePrice: base, 
+            addOnsTotal: addOnsPrice, 
+            totalPrice: base + addOnsPrice, 
+            totalDuration: duration 
+        };
     }, [selectedService, selectedAddOns]);
 
     const checkExistingCustomer = async (phone, lineUserId) => {
@@ -454,43 +459,48 @@ export default function CreateAppointmentPage() {
                 // เริ่มต้นด้วย awaiting_confirmation เพื่อให้ลูกค้ายืนยันการจอง
                 status: 'awaiting_confirmation',
                 customerInfo: {
-                    fullName: customerInfo.fullName,
-                    phone: customerInfo.phone,
+                    fullName: customerInfo.fullName || '',
+                    phone: customerInfo.phone || '',
                     note: customerInfo.note || '',
-                    customerId: customerResult.customerId,
-                    lineUserId: customerInfo.lineUserId
+                    customerId: customerResult.customerId || '',
+                    lineUserId: customerInfo.lineUserId || ''
                 },
-                serviceInfo: {
-                    id: selectedService.id,
-                    name: selectedService.serviceName,
+                serviceInfo: selectedService ? {
+                    id: selectedService.id || '',
+                    name: selectedService.serviceName || '',
                     imageUrl: selectedService.imageUrl || '',
-                    price: selectedService.price || selectedService.basePrice || 0,
-                    duration: selectedService.duration || 0,
-                    addOns: selectedAddOns
+                    duration: Number(selectedService.duration ?? 0),
+                    addOns: selectedAddOns || []
+                } : {
+                    id: '',
+                    name: '',
+                    imageUrl: '',
+                    duration: 0,
+                    addOns: []
                 },
                 appointmentInfo: {
-                    date: appointmentDate,
-                    time: appointmentTime,
+                    date: appointmentDate || '',
+                    time: appointmentTime || '',
                     dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
-                    beauticianId: useBeautician ? beautician?.id : null,
-                    employeeId: useBeautician ? beautician?.id : null,
-                    beauticianInfo: useBeautician ? { firstName: beautician?.firstName, lastName: beautician?.lastName } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
-                    beauticianName: useBeautician ? `${beautician?.firstName} ${beautician?.lastName}` : 'ระบบจัดสรร',
-                    duration: totalDuration,
-                    addOns: selectedAddOns
+                    beauticianId: useBeautician ? (beautician?.id || '') : '',
+                    employeeId: useBeautician ? (beautician?.id || '') : '',
+                    beauticianInfo: useBeautician ? { firstName: beautician?.firstName || '', lastName: beautician?.lastName || '' } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
+                    beauticianName: useBeautician ? `${beautician?.firstName || ''} ${beautician?.lastName || ''}`.trim() || 'ไม่ระบุช่าง' : 'ระบบจัดสรร',
+                    duration: totalDuration || 0,
+                    addOns: selectedAddOns || []
                 },
                 paymentInfo: {
-                    basePrice,
-                    addOnsTotal,
-                    originalPrice: totalPrice,
-                    totalPrice: totalPrice,
+                    basePrice: Number(basePrice) || 0,
+                    addOnsTotal: Number(addOnsTotal) || 0,
+                    originalPrice: Number(totalPrice) || 0,
+                    totalPrice: Number(totalPrice) || 0,
                     discount: 0,
                     paymentStatus: 'pending'
                 },
-                date: appointmentDate,
-                time: appointmentTime,
-                serviceId: selectedService.id,
-                beauticianId: useBeautician ? beautician?.id : null,
+                date: appointmentDate || '',
+                time: appointmentTime || '',
+                serviceId: selectedService.id || '',
+                beauticianId: useBeautician ? (beautician?.id || '') : '',
                 createdAt: new Date(),
                 // เพิ่มข้อมูลผู้สร้าง (admin)
                 createdBy: {

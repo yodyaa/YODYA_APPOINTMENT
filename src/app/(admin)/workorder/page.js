@@ -388,10 +388,18 @@ export default function WorkorderAdminPage() {
                           </td>
                           {/* บริการ */}
                           <td className="p-2 border">
-                            {w.type === 'appointment' 
-                              ? safe(w.serviceInfo?.name) 
-                              : safe(w.workorder)
-                            }
+                            {(() => {
+                              if (w.type === 'appointment') {
+                                return safe(w.serviceInfo?.name)
+                                  || safe(w.workorder)
+                                  || safe(w.serviceName)
+                                  || '-';
+                              } else {
+                                return safe(w.workorder)
+                                  || safe(w.serviceName)
+                                  || '-';
+                              }
+                            })()}
                           </td>
                           {/* ราคา */}
                           <td className="p-2 border text-right font-semibold text-green-600">

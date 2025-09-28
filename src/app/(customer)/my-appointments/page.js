@@ -41,17 +41,37 @@ export default function MyAppointmentsPage() {
             where("status", "in", ['awaiting_confirmation', 'confirmed', 'in_progress']),
             orderBy("appointmentInfo.dateTime", "asc")
         );
+        let workordersUnsub = null;
         const unsubscribe = onSnapshot(appointmentsQuery, (snapshot) => {
             const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAppointments(docs);
-            setLoading(false);
+            const bookingIds = docs.map(d => d.id);
+            if (workordersUnsub) workordersUnsub();
+            if (bookingIds.length === 0) {
+                setAppointments(docs);
+                setLoading(false);
+                return;
+            }
+            const workordersQuery = query(
+                collection(db, 'workorders'),
+                where('bookingId', 'in', bookingIds)
+            );
+            workordersUnsub = onSnapshot(workordersQuery, (workordersSnap) => {
+                const workorders = workordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const workorderMap = {};
+                workorders.forEach(w => { workorderMap[w.bookingId] = w; });
+                const merged = docs.map(job => ({ ...job, workorderInfo: workorderMap[job.id] || undefined }));
+                setAppointments(merged);
+                setLoading(false);
+            });
         }, (error) => {
             console.error("Error fetching appointments:", error);
             setNotification({ show: true, title: 'Error', message: 'Could not fetch appointments.', type: 'error' });
             setLoading(false);
         });
-        
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            if (workordersUnsub) workordersUnsub();
+        };
     }, [profile, liffLoading]);
 
     const handleQrCodeClick = (appointmentId) => {

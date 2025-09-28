@@ -66,12 +66,12 @@ export default function AppointmentPage() {
         <div>
             <CustomerHeader showBackButton={true} showActionButtons={false} />
             <div className="p-4">
-                <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-2">
                     {services.map(service => (
                         <div
                             key={service.id}
                             onClick={() => handleSelectService(service)}
-                            className="rounded-2xl overflow-hidden shadow-lg cursor-pointer bg-white hover:shadow-xl transition-all border border-gray-200"
+                            className="rounded-lg overflow-hidden shadow-lg cursor-pointer bg-white hover:shadow-xl transition-all border border-gray-200"
                         >
                             <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
                                 <Image

@@ -80,8 +80,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
             serviceInfo: {
                 id: serviceId,
                 name: authoritativeServiceData.serviceName,
-                price: authoritativeServiceData.price,
-                duration: authoritativeServiceData.duration,
+                duration: typeof authoritativeServiceData.duration === 'number' ? authoritativeServiceData.duration : 0,
                 imageUrl: authoritativeServiceData.imageUrl || '',
                 addOns: appointmentData.serviceInfo?.addOns || []
             },

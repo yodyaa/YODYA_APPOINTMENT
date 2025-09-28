@@ -243,7 +243,8 @@ export default function CreateWorkorderPage() {
         userIDresponsible: form.userIDresponsible || "",
         userIDline: form.userIDline || "",
         beauticianId: assignEmployeeId || "",
-        caseNumber: assignCase || ""
+        caseNumber: assignCase || "",
+        bookingId: selectedBooking?.id || ""
       };
       const docRef = await addDoc(collection(db, "workorders"), workorderData);
   alert("สร้างงานใหม่สำเร็จ!");
@@ -258,9 +259,11 @@ export default function CreateWorkorderPage() {
     try {
       const beautician = beauticians.find(b => b.id === beauticianId);
       const customer = bookingCustomers[booking.id];
+      // ใช้ชื่อบริการจาก serviceInfo.name ก่อน fallback เป็น serviceName หรือ 'บริการทั่วไป'
+      const serviceName = booking.serviceInfo?.name || booking.serviceName || "บริการทั่วไป";
       const docRef = await addDoc(collection(db, "workorders"), {
         idKey: booking.id || new Date().getTime().toString(),
-        workorder: booking.serviceName || "บริการทั่วไป",
+        workorder: serviceName,
         processStatus: "ใหม่",
         responsible: beautician?.fullName || beautician?.name || beautician?.firstName + ' ' + (beautician?.lastName || '') || "",
         date: date || booking.date || new Date().toISOString().slice(0, 10),
