@@ -411,6 +411,8 @@ export default function AdminAppointmentDetail() {
                     ? `${formatPrice(appointment.appointmentInfo.price)} ${profile.currencySymbol}`
                     : appointment.price
                       ? `${formatPrice(appointment.price)} ${profile.currencySymbol}`
+                    : appointment.price
+                      ? `${formatPrice(appointment.price)} ${profile.currencySymbol}`
                       : '-'
           } />
           <InfoRow label="รวมบริการเสริม" value={

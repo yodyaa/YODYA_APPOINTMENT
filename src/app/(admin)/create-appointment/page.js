@@ -454,21 +454,30 @@ export default function CreateAppointmentPage() {
                 // เริ่มต้นด้วย awaiting_confirmation เพื่อให้ลูกค้ายืนยันการจอง
                 status: 'awaiting_confirmation',
                 customerInfo: {
-                    ...customerInfo,
-                    customerId: customerResult.customerId
+                    fullName: customerInfo.fullName,
+                    phone: customerInfo.phone,
+                    note: customerInfo.note || '',
+                    customerId: customerResult.customerId,
+                    lineUserId: customerInfo.lineUserId
                 },
-                serviceInfo: { id: selectedService.id, name: selectedService.serviceName, imageUrl: selectedService.imageUrl || '' },
-                date: appointmentDate,
-                time: appointmentTime,
-                serviceId: selectedService.id,
-                beauticianId: useBeautician ? beautician?.id : null,
+                serviceInfo: {
+                    id: selectedService.id,
+                    name: selectedService.serviceName,
+                    imageUrl: selectedService.imageUrl || '',
+                    price: selectedService.price || 0,
+                    duration: selectedService.duration || 0,
+                    addOns: selectedAddOns
+                },
                 appointmentInfo: {
+                    date: appointmentDate,
+                    time: appointmentTime,
+                    dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
                     beauticianId: useBeautician ? beautician?.id : null,
                     employeeId: useBeautician ? beautician?.id : null,
                     beauticianInfo: useBeautician ? { firstName: beautician?.firstName, lastName: beautician?.lastName } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
-                    dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
-                    addOns: selectedAddOns,
+                    beauticianName: useBeautician ? `${beautician?.firstName} ${beautician?.lastName}` : 'ระบบจัดสรร',
                     duration: totalDuration,
+                    addOns: selectedAddOns
                 },
                 paymentInfo: {
                     basePrice,
@@ -476,8 +485,12 @@ export default function CreateAppointmentPage() {
                     originalPrice: totalPrice,
                     totalPrice: totalPrice,
                     discount: 0,
-                    paymentStatus: 'pending', // เริ่มต้นด้วย pending แทน unpaid
+                    paymentStatus: 'pending'
                 },
+                date: appointmentDate,
+                time: appointmentTime,
+                serviceId: selectedService.id,
+                beauticianId: useBeautician ? beautician?.id : null,
                 createdAt: new Date(),
                 // เพิ่มข้อมูลผู้สร้าง (admin)
                 createdBy: {

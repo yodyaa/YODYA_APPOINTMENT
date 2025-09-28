@@ -19,29 +19,34 @@ export default function WorkorderAdminPage() {
   // วันที่ที่เลือกในรูปแบบ string
   const selectedDateStr = selectedDate.toISOString().split('T')[0];
   
-  // กรองงานตามวันที่เลือก
-  const selectedDayWorkorders = workorders.filter(w => w.date === selectedDateStr);
+    // กรองงานตามวันที่เลือก - รองรับทั้ง workorder และ appointment
+    const selectedDayWorkorders = workorders.filter(w => w.date === selectedDateStr);
+    const selectedDayAppointments = appointments.filter(a => a.date === selectedDateStr);
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        // ดึงข้อมูลงาน
-        const workordersSnapshot = await getDocs(collection(db, "workorders"));
-        const workordersData = workordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setWorkorders(workordersData);
+    useEffect(() => {
+      const fetchAllData = async () => {
+        setLoading(true);
+        try {
+          // ดึงข้อมูลงาน
+          const workordersSnapshot = await getDocs(collection(db, "workorders"));
+          const workordersData = workordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setWorkorders(workordersData);
 
-        // ดึงข้อมูลบริการ
-        const servicesSnapshot = await getDocs(collection(db, "services"));
-        const servicesData = servicesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setServices(servicesData);
+          // ดึงข้อมูลบริการ
+          const servicesSnapshot = await getDocs(collection(db, "services"));
+          const servicesData = servicesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setServices(servicesData);
 
-        // ดึงข้อมูลการนัดหมาย
-        const appointmentsSnapshot = await getDocs(collection(db, "appointments"));
-        const appointmentsData = appointmentsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setAppointments(appointmentsData);
-
-        // ดึงการตั้งค่าจำนวนช่างรายวัน
+          // ดึงข้อมูลการนัดหมาย - ใช้โครงสร้างมาตรฐาน
+          const appointmentsSnapshot = await getDocs(collection(db, "appointments"));
+          const appointmentsData = appointmentsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            // ใช้โครงสร้างมาตรฐาน customerInfo, serviceInfo, appointmentInfo, paymentInfo
+            type: 'appointment', // เพิ่ม type เพื่อแยกประเภท
+            caseNumber: doc.data().caseNumber || doc.data().id?.substring(0,3),
+          }));
+          setAppointments(appointmentsData);        // ดึงการตั้งค่าจำนวนช่างรายวัน
         const dailySettingsSnapshot = await getDocs(collection(db, "dailyStaffSettings"));
         const dailySettingsData = {};
         dailySettingsSnapshot.docs.forEach(doc => {
@@ -67,21 +72,57 @@ export default function WorkorderAdminPage() {
   // ตัวเลือกสถานะงาน
   const processStatusOptions = ["ใหม่", "กำลังดำเนินการ", "เสร็จสิ้น"];
 
-  // ตัวเลือกช่าง (beauticianName หรือ responsible)
-  const beauticianNames = Array.from(new Set(workorders.map(w => w.beauticianName || w.responsible).filter(Boolean)));
+  // ตัวเลือกช่าง (beauticianName หรือ responsible) - รวมทั้ง workorder และ appointment
+  const beauticianNames = Array.from(new Set([
+    ...workorders.map(w => w.beauticianName || w.responsible).filter(Boolean),
+    ...appointments.map(a => 
+      a.appointmentInfo?.beauticianName || 
+      a.appointmentInfo?.beauticianInfo?.firstName || 
+      a.beauticianName
+    ).filter(Boolean)
+  ]));
 
   // ฟังก์ชันบันทึกการแก้ไข
   const handleInlineEdit = async (workorderId, field, value) => {
-    setWorkorders(prev => prev.map(w => w.id === workorderId ? { ...w, [field]: value } : w));
-    try {
-      await updateDoc(doc(db, "workorders", workorderId), { [field]: value });
-      // คำนวณและอัปเดตสถิติทันทีหลังบันทึกข้อมูล workorder
-      const stats = await calculateDayStats();
-      setDayStats(stats);
-    } catch (err) {
-      // ถ้า error ให้ revert กลับ
-      setWorkorders(prev => prev.map(w => w.id === workorderId ? { ...w, [field]: w[field] } : w));
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    // ตรวจสอบว่าเป็น appointment หรือ workorder
+    const isAppointment = appointments.some(a => a.id === workorderId);
+    const isWorkorder = workorders.some(w => w.id === workorderId);
+    
+    if (isAppointment) {
+      setAppointments(prev => prev.map(a => {
+        if (a.id === workorderId) {
+          if (typeof value === 'object') {
+            return { ...a, [field]: value };
+          } else {
+            return { ...a, [field]: value };
+          }
+        }
+        return a;
+      }));
+      
+      try {
+        const updateData = typeof value === 'object' ? { [field]: value } : { [field]: value };
+        await updateDoc(doc(db, "appointments", workorderId), updateData);
+        // คำนวณและอัปเดตสถิติทันทีหลังบันทึกข้อมูล
+        const stats = await calculateDayStats();
+        setDayStats(stats);
+      } catch (err) {
+        console.error("Error updating appointment:", err);
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลการนัดหมาย");
+      }
+    } else if (isWorkorder) {
+      setWorkorders(prev => prev.map(w => w.id === workorderId ? { ...w, [field]: value } : w));
+      try {
+        await updateDoc(doc(db, "workorders", workorderId), { [field]: value });
+        // คำนวณและอัปเดตสถิติทันทีหลังบันทึกข้อมูล workorder
+        const stats = await calculateDayStats();
+        setDayStats(stats);
+      } catch (err) {
+        console.error("Error updating workorder:", err);
+        // ถ้า error ให้ revert กลับ
+        setWorkorders(prev => prev.map(w => w.id === workorderId ? { ...w, [field]: w[field] } : w));
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล workorder");
+      }
     }
   };
 
@@ -92,12 +133,23 @@ export default function WorkorderAdminPage() {
     const currentStaffCount = dailyStaffSettings[selectedDateStr] || staffCount;
     let totalRevenue = 0;
     let totalDuration = 0;
+    
+    // คำนวณรายได้จาก workorders
     selectedDayWorkorders.forEach(wo => {
       const service = services.find(s => s.serviceName === wo.workorder || s.name === wo.workorder);
       const price = wo.price !== undefined && wo.price !== null && wo.price !== '' ? Number(wo.price) : (service?.price || 0);
       totalRevenue += price;
       totalDuration += service?.duration || 0;
     });
+    
+    // คำนวณรายได้จาก appointments
+    dayAppointments.forEach(apt => {
+      const price = apt.paymentInfo?.totalPrice || apt.serviceInfo?.price || 0;
+      totalRevenue += Number(price);
+      const duration = apt.appointmentInfo?.duration || apt.serviceInfo?.duration || 0;
+      totalDuration += Number(duration);
+    });
+    
     const avgProductivity = currentStaffCount > 0 ? totalRevenue / currentStaffCount : 0;
     // ถ้า totalRevenue > productivityThreshold * currentStaffCount ให้ถือว่าไม่ว่าง
     const isBusy = totalRevenue > (productivityThreshold * currentStaffCount);
@@ -328,15 +380,36 @@ export default function WorkorderAdminPage() {
                             />
                           </td>
                           {/* ลูกค้า */}
-                          <td className="p-2 border">{safe(w.name)}</td>
+                          <td className="p-2 border">
+                            {w.type === 'appointment' 
+                              ? safe(w.customerInfo?.fullName) 
+                              : safe(w.name)
+                            }
+                          </td>
                           {/* บริการ */}
-                          <td className="p-2 border">{safe(w.workorder)}</td>
+                          <td className="p-2 border">
+                            {w.type === 'appointment' 
+                              ? safe(w.serviceInfo?.name) 
+                              : safe(w.workorder)
+                            }
+                          </td>
                           {/* ราคา */}
                           <td className="p-2 border text-right font-semibold text-green-600">
                             <input
                               type="number"
-                              value={w.price !== undefined && w.price !== null && w.price !== '' ? w.price : ''}
-                              onChange={e => handleInlineEdit(w.id, 'price', e.target.value)}
+                              value={
+                                w.type === 'appointment' 
+                                  ? (w.paymentInfo?.totalPrice !== undefined && w.paymentInfo?.totalPrice !== null && w.paymentInfo?.totalPrice !== '' ? w.paymentInfo.totalPrice : '')
+                                  : (w.price !== undefined && w.price !== null && w.price !== '' ? w.price : '')
+                              }
+                              onChange={e => {
+                                const field = w.type === 'appointment' ? 'paymentInfo.totalPrice' : 'price';
+                                if (w.type === 'appointment') {
+                                  handleInlineEdit(w.id, 'paymentInfo', {...(w.paymentInfo || {}), totalPrice: e.target.value});
+                                } else {
+                                  handleInlineEdit(w.id, 'price', e.target.value);
+                                }
+                              }}
                               className="border rounded px-2 py-1 w-20 text-right text-green-700"
                               min={0}
                               placeholder="-"
@@ -345,8 +418,18 @@ export default function WorkorderAdminPage() {
                           {/* สถานะเก็บเงิน */}
                           <td className="p-2 border text-center">
                             <select
-                              value={w.paymentStatus || ''}
-                              onChange={e => handleInlineEdit(w.id, 'paymentStatus', e.target.value)}
+                              value={
+                                w.type === 'appointment' 
+                                  ? (w.paymentInfo?.paymentStatus || '') 
+                                  : (w.paymentStatus || '')
+                              }
+                              onChange={e => {
+                                if (w.type === 'appointment') {
+                                  handleInlineEdit(w.id, 'paymentInfo', {...(w.paymentInfo || {}), paymentStatus: e.target.value});
+                                } else {
+                                  handleInlineEdit(w.id, 'paymentStatus', e.target.value);
+                                }
+                              }}
                               className="border rounded px-2 py-1 w-full text-sm"
                             >
                               <option value="">เลือกสถานะ</option>
@@ -357,8 +440,18 @@ export default function WorkorderAdminPage() {
                           {/* ช่างแก้ไข inline */}
                           <td className="p-2 border font-medium text-indigo-600">
                             <select
-                              value={w.beauticianName || w.responsible || ''}
-                              onChange={e => handleInlineEdit(w.id, 'beauticianName', e.target.value)}
+                              value={
+                                w.type === 'appointment' 
+                                  ? (w.appointmentInfo?.beauticianName || w.appointmentInfo?.beauticianInfo?.firstName || '') 
+                                  : (w.beauticianName || w.responsible || '')
+                              }
+                              onChange={e => {
+                                if (w.type === 'appointment') {
+                                  handleInlineEdit(w.id, 'appointmentInfo', {...(w.appointmentInfo || {}), beauticianName: e.target.value});
+                                } else {
+                                  handleInlineEdit(w.id, 'beauticianName', e.target.value);
+                                }
+                              }}
                               className="border rounded px-2 py-1 w-full"
                             >
                               <option value="">เลือกช่าง</option>

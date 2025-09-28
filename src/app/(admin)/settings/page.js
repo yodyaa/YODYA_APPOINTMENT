@@ -305,10 +305,10 @@ export default function AdminSettingsPage() {
                                 <button type="button" className="bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 text-sm" onClick={() => setBookingSettings(prev => ({...prev, timeQueues: [...(prev.timeQueues || []), { time: prev._queueTime, count: parseInt(prev._queueCount) }].sort((a,b) => a.time.localeCompare(b.time)), _queueTime: '', _queueCount: '' }))} disabled={!bookingSettings._queueTime || !bookingSettings._queueCount}>เพิ่ม</button>
                             </div>
                             <div className="flex flex-wrap gap-1">
-                                {(bookingSettings.timeQueues || []).map(q => (
-                                    <span key={q.time} className="inline-flex items-center bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                                {(bookingSettings.timeQueues || []).map((q, idx) => (
+                                    <span key={q.time + '-' + q.count + '-' + idx} className="inline-flex items-center bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
                                         {q.time} ({q.count})
-                                        <button type="button" className="ml-1.5 text-red-500 hover:text-red-700" onClick={() => setBookingSettings(prev => ({...prev, timeQueues: prev.timeQueues.filter(x => x.time !== q.time)}))}>×</button>
+                                        <button type="button" className="ml-1.5 text-red-500 hover:text-red-700" onClick={() => setBookingSettings(prev => ({...prev, timeQueues: prev.timeQueues.filter((x, i) => i !== idx)}))}>×</button>
                                     </span>
                                 ))}
                             </div>
@@ -405,15 +405,15 @@ export default function AdminSettingsPage() {
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-1">
-                                {(bookingSettings.holidayDates || []).map(holiday => (
-                                    <span key={holiday.date} className="inline-flex items-center bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">
+                                {(bookingSettings.holidayDates || []).map((holiday, idx) => (
+                                    <span key={holiday.date + '-' + (holiday.reason || '') + '-' + idx} className="inline-flex items-center bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">
                                         {holiday.date} {holiday.reason && `(${holiday.reason})`}
                                         <button 
                                             type="button" 
                                             className="ml-1.5 text-red-500 hover:text-red-700"
                                             onClick={() => setBookingSettings(prev => ({
                                                 ...prev,
-                                                holidayDates: prev.holidayDates.filter(h => h.date !== holiday.date)
+                                                holidayDates: prev.holidayDates.filter((h, i) => i !== idx)
                                             }))}
                                         >
                                             ×

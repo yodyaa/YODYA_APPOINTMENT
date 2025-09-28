@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { connectLineToCustomer } from '@/app/actions/customerActions';
-import { getPointsByPhone } from '@/app/actions/pointActions';
 
 export default function ConnectLinePage() {
   const [formData, setFormData] = useState({

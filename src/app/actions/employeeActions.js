@@ -12,7 +12,6 @@ import {
     sendReviewFlexMessage,
     sendPaymentConfirmationFlexMessage
 } from './lineFlexActions';
-import { awardPointsForPurchase, awardPointsForVisit, awardPointsByPhone } from './pointActions'; 
 import { findOrCreateCustomer } from './customerActions'; 
 
 // --- Helper to get notification settings ---
