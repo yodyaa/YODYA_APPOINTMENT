@@ -319,7 +319,24 @@ export default function AdminsPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {admin.createdAt ? new Date(admin.createdAt.seconds * 1000).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
+                  {(() => {
+                    const val = admin.datedAt || admin.createdAt;
+                    if (!val) return 'ไม่ระบุ';
+                    if (val.seconds) {
+                      return new Date(val.seconds * 1000).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                    }
+                    if (typeof val.toDate === 'function') {
+                      const d = val.toDate();
+                      if (d instanceof Date && !isNaN(d)) {
+                        return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                      }
+                    }
+                    const dateObj = typeof val === 'string' ? new Date(val) : val;
+                    if (dateObj instanceof Date && !isNaN(dateObj)) {
+                      return dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                    }
+                    return 'ไม่ระบุ';
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">

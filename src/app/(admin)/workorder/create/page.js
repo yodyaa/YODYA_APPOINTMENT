@@ -506,9 +506,33 @@ export default function CreateWorkorderPage() {
                     <>
                       <div className="font-bold text-lg text-indigo-800 mb-2">{displayName}</div>
                       <div className="text-sm text-gray-700 mb-1"><b>เบอร์:</b> {displayPhone}</div>
-                      {displayLineId !== 'U8d286780c70cf7d60a0ff5704dcf2319' && displayLineId !== 'ไม่มี LINE ID' && (
-                        <div className="text-sm text-gray-700 mb-1"><b>LINE:</b> {displayLineId}</div>
-                      )}
+                      {/* LINE ID: show SVG icon for connection status */}
+                      <div className="text-sm text-gray-700 mb-1 flex items-center gap-1">
+                        <b>LINE:</b>
+                        {(() => {
+                          // Hide actual LINE ID, show SVG icon only
+                          // If there is a valid LINE ID (not default/empty), show green connected icon
+                          // If booked by admin (no LINE ID), show gray disconnected icon
+                          const isConnected = displayLineId !== 'U8d286780c70cf7d60a0ff5704dcf2319' && displayLineId !== 'ไม่มี LINE ID';
+                          if (isConnected) {
+                            // Connected SVG (green)
+                            return (
+                              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="10" cy="10" r="9" fill="#22c55e" stroke="#16a34a" strokeWidth="2" />
+                                <path d="M7 10.5l2 2 4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            );
+                          } else {
+                            // Disconnected SVG (gray)
+                            return (
+                              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="10" cy="10" r="9" fill="#e5e7eb" stroke="#9ca3af" strokeWidth="2" />
+                                <path d="M7 13l6-6M7 7l6 6" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                            );
+                          }
+                        })()}
+                      </div>
                       <div className="text-sm text-gray-700 mb-1"><b>เวลา:</b> {
                         b.date
                           ? format(new Date(b.date), 'dd-MM-yyyy')
@@ -528,8 +552,8 @@ export default function CreateWorkorderPage() {
                       {displayVillage !== 'ไม่ระบุหมู่บ้าน' && (
                         <div className="text-sm text-gray-700 mb-1"><b>หมู่บ้าน:</b> {displayVillage}</div>
                       )}
-                      {((b.beauticianInfo?.firstName ? `${b.beauticianInfo.firstName} ${b.beauticianInfo.lastName || ''}` : (b.beauticianName || 'ไม่ระบุช่าง')) !== 'ไม่ระบุช่าง') && (
-                        <div className="text-sm text-gray-700 mb-1"><b>ช่าง:</b> {b.beauticianInfo?.firstName ? `${b.beauticianInfo.firstName} ${b.beauticianInfo.lastName || ''}` : (b.beauticianName || 'ไม่ระบุช่าง')}</div>
+                      {((b.gardenersInfo?.firstName ? `${b.gardenersInfo.firstName} ${b.gardenersInfo.lastName || ''}` : (b.gardenerName || 'ไม่ระบุช่าง')) !== 'ไม่ระบุช่าง') && (
+                        <div className="text-sm text-gray-700 mb-1"><b>ช่าง:</b> {b.gardenersInfo?.firstName ? `${b.gardenersInfo.firstName} ${b.gardenersInfo.lastName || ''}` : (b.gardenerName || 'ไม่ระบุช่าง')}</div>
                       )}
                       {customer && (
                         <div className="text-xs text-green-600 mt-2">✓ พบข้อมูลลูกค้าในระบบ</div>

@@ -109,8 +109,8 @@ export default function WorkorderAdminPage() {
   // ฟังก์ชันช่วยจัดการข้อมูลที่อาจไม่มี
   const safe = (val, fallback = "-") => (val !== undefined && val !== null && val !== "" ? val : fallback);
 
-  // ตัวเลือกสถานะงาน
-  const processStatusOptions = ["ใหม่", "กำลังดำเนินการ", "เสร็จสิ้น"];
+  // ตัวเลือกสถานะงานใหม่
+  const processStatusOptions = ["อยู่ในแผนงาน", "ช่างกำลังดำเนินการ", "เสร็จสิ้น"];
 
   // ตัวเลือกช่าง: ดึงจาก gardeners collection เท่านั้น
   const [gardeners, setGardeners] = useState([]);
@@ -448,8 +448,8 @@ export default function WorkorderAdminPage() {
                                 handleInlineEdit(w.id, 'processStatus', e.target.value);
                               }}
                               className={`px-2 py-1 rounded text-sm font-medium w-full ${
-                                w.processStatus === 'ใหม่' ? 'bg-blue-100 text-blue-800' :
-                                w.processStatus === 'กำลังดำเนินการ' ? 'bg-yellow-100 text-yellow-800' :
+                                w.processStatus === 'อยู่ในแผนงาน' ? 'bg-blue-100 text-blue-800' :
+                                w.processStatus === 'ช่างกำลังดำเนินการ' ? 'bg-yellow-100 text-yellow-800' :
                                 w.processStatus === 'เสร็จสิ้น' ? 'bg-green-100 text-green-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}
@@ -541,8 +541,11 @@ export default function WorkorderAdminPage() {
                               className="border rounded px-2 py-1 w-full text-sm"
                             >
                               <option value="">เลือกสถานะ</option>
-                              <option value="pending">เรียกเก็บเงิน</option>
-                              <option value="paid">เก็บเงินแล้ว</option>
+                              <option value="ส่งงานเรียบร้อยแล้ว">ส่งงานเรียบร้อยแล้ว</option>
+                              <option value="เก็บเงินได้แล้ว">เก็บเงินได้แล้ว</option>
+                              <option value="ติดตามทวงหนี้ ครั้งที่ 1">ติดตามทวงหนี้ ครั้งที่ 1</option>
+                              <option value="ติดตามทวงหนี้ ครั้งที่ 2">ติดตามทวงหนี้ ครั้งที่ 2</option>
+                              <option value="ติดตามทวงหนี้ ครั้งที่ 3">ติดตามทวงหนี้ ครั้งที่ 3</option>
                             </select>
                           </td>
                           {/* ช่างแก้ไข inline */}

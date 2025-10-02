@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 
 const MOCK_PROFILE = {
     userId: 'U_TEST_1234567890ABCDEF',
-    displayName: 'คุณ ทดสอบ',
+    displayName: 'User Test (Dev)',
     pictureUrl: 'https://lh5.googleusercontent.com/d/10mcLZP15XqebnVb1IaODQLhZ93EWT7h7'
 };
 
