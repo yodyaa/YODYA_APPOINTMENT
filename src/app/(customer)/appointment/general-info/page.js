@@ -11,6 +11,7 @@ import { th } from 'date-fns/locale';
 import { createAppointmentWithSlotCheck } from '@/app/actions/appointmentActions';
 import CustomerHeader from '@/app/components/CustomerHeader';
 import { useToast } from '@/app/components/common/Toast';
+import { sendBookingNotification } from '@/app/actions/lineActions';
 
 function GeneralInfoContent() {
     const searchParams = useSearchParams();
@@ -158,6 +159,24 @@ function GeneralInfoContent() {
                     usedAt: new Date(),
                     appointmentId: newAppointmentId
                 });
+            }
+
+            // แจ้งเตือนแอดมินเมื่อลูกค้าจองเอง
+            try {
+                const adminNotificationData = {
+                    customerName: formData.fullName || 'ลูกค้า',
+                    serviceName: service?.serviceName || 'บริการ',
+                    appointmentDate: date,
+                    appointmentTime: time,
+                    totalPrice: finalPrice || 0
+                };
+                
+                console.log('[CUSTOMER BOOKING] เตรียมแจ้งเตือนแอดมิน:', adminNotificationData);
+                await sendBookingNotification(adminNotificationData, 'newBooking');
+                console.log('[CUSTOMER BOOKING] แจ้งเตือนแอดมินสำเร็จ');
+            } catch (adminNotifyErr) {
+                console.error('[CUSTOMER BOOKING] แจ้งเตือนแอดมิน ERROR:', adminNotifyErr);
+                // ไม่หยุดการทำงาน แค่ log error
             }
 
             showToast('จองสำเร็จ! กำลังพาไปหน้านัดหมาย', "success", "จองสำเร็จ");

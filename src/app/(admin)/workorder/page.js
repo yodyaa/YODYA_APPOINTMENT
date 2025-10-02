@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 // ...existing code...
 import { updateWorkorderStatusByAdmin } from "@/app/actions/workorderActions";
+import { notifyStatusChange, notifyPaymentStatusChange } from "@/app/actions/notificationActions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/app/lib/firebase";
 import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
@@ -443,9 +444,27 @@ export default function WorkorderAdminPage() {
                           <td className="p-2 border">
                             <select
                               value={w.processStatus || ''}
-                              onChange={e => {
-                                console.log('[DROPDOWN] เปลี่ยนสถานะ', { id: w.id, old: w.processStatus, new: e.target.value });
-                                handleInlineEdit(w.id, 'processStatus', e.target.value);
+                              onChange={async e => {
+                                const newStatus = e.target.value;
+                                const oldStatus = w.processStatus || '';
+                                console.log('[DROPDOWN] เปลี่ยนสถานะ', { id: w.id, old: oldStatus, new: newStatus });
+                                
+                                // อัพเดทสถานะ
+                                handleInlineEdit(w.id, 'processStatus', newStatus);
+
+                                // แจ้งเตือนแอดมินและลูกค้าเมื่อเปลี่ยนสถานะ
+                                if (newStatus && newStatus !== oldStatus) {
+                                  try {
+                                    await notifyStatusChange(
+                                      { ...w, date: w.date || selectedDateStr },
+                                      newStatus,
+                                      oldStatus,
+                                      customerNotifySettings
+                                    );
+                                  } catch (notifyErr) {
+                                    console.error('[WORK STATUS] แจ้งเตือน ERROR:', notifyErr);
+                                  }
+                                }
                               }}
                               className={`px-2 py-1 rounded text-sm font-medium w-full ${
                                 w.processStatus === 'อยู่ในแผนงาน' ? 'bg-blue-100 text-blue-800' :
@@ -531,11 +550,29 @@ export default function WorkorderAdminPage() {
                                   ? (w.paymentInfo?.paymentStatus || '') 
                                   : (w.paymentStatus || '')
                               }
-                              onChange={e => {
+                              onChange={async e => {
+                                const newPaymentStatus = e.target.value;
+                                const oldPaymentStatus = w.type === 'appointment' 
+                                  ? (w.paymentInfo?.paymentStatus || '') 
+                                  : (w.paymentStatus || '');
+                                
                                 if (w.type === 'appointment') {
-                                  handleInlineEdit(w.id, 'paymentInfo', {...(w.paymentInfo || {}), paymentStatus: e.target.value});
+                                  handleInlineEdit(w.id, 'paymentInfo', {...(w.paymentInfo || {}), paymentStatus: newPaymentStatus});
                                 } else {
-                                  handleInlineEdit(w.id, 'paymentStatus', e.target.value);
+                                  handleInlineEdit(w.id, 'paymentStatus', newPaymentStatus);
+                                }
+
+                                // แจ้งเตือนแอดมินเมื่อเปลี่ยนสถานะเก็บเงิน
+                                if (newPaymentStatus && newPaymentStatus !== oldPaymentStatus) {
+                                  try {
+                                    await notifyPaymentStatusChange(
+                                      { ...w, date: w.date || selectedDateStr },
+                                      newPaymentStatus,
+                                      oldPaymentStatus
+                                    );
+                                  } catch (adminNotifyErr) {
+                                    console.error('[PAYMENT STATUS] แจ้งเตือนแอดมิน ERROR:', adminNotifyErr);
+                                  }
                                 }
                               }}
                               className="border rounded px-2 py-1 w-full text-sm"

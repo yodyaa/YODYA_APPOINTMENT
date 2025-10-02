@@ -181,7 +181,7 @@ export default function AdminNavbar() {
                 </button>
             </div>
             {/* Title */}
-            <Link href="/dashboard" className="text-xl font-bold text-slate-800" >
+            <Link href="/monthly-dashboard" className="text-xl font-bold text-slate-800" >
               Dashboard
             </Link>
           </div>

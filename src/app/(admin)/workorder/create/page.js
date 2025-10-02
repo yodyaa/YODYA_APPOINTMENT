@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { db } from "@/app/lib/firebase";
 import { collection, getDocs, query, where, addDoc, orderBy } from "firebase/firestore";
 import { sendWorkorderConfirmedFlex } from '@/app/actions/workorderActions';
+import { sendBookingNotification } from '@/app/actions/lineActions';
 import { useRouter } from "next/navigation";
 import { format, startOfDay, endOfDay, parseISO } from "date-fns";
 
@@ -222,6 +223,7 @@ export default function CreateWorkorderPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[DEBUG] เริ่มสร้างงานใหม่ (manual)');
     try {
       // ตรวจสอบและ map ข้อมูลให้ครบทุกฟิลด์สำคัญ
       const workorderData = {
@@ -258,6 +260,24 @@ export default function CreateWorkorderPage() {
           console.error('[CREATE][Flex] ERROR', flexErr);
         }
       }
+
+      // แจ้งเตือนแอดมินเมื่อสร้างงานใหม่
+      try {
+        const notificationData = {
+          customerName: workorderData.name || 'ลูกค้า',
+          serviceName: workorderData.workorder || 'งานใหม่',
+          appointmentDate: workorderData.date || new Date().toISOString().slice(0, 10),
+          appointmentTime: workorderData.time || '',
+          totalPrice: workorderData.payment ? parseInt(workorderData.payment) : 0,
+          staffName: workorderData.responsible || 'พนักงาน'
+        };
+        console.log('[CREATE] เตรียมแจ้งเตือนแอดมิน (งานใหม่):', notificationData);
+        await sendBookingNotification(notificationData, 'workorderCreated');
+        console.log('[CREATE] แจ้งเตือนแอดมินสำเร็จ');
+      } catch (adminNotifyErr) {
+        console.error('[CREATE] แจ้งเตือนแอดมิน ERROR', adminNotifyErr);
+      }
+
       alert("สร้างงานใหม่สำเร็จ!");
       // redirect ไปหน้า workorder
       // ไปยังหน้ารายวันของวันที่นัดหมาย
@@ -269,6 +289,7 @@ export default function CreateWorkorderPage() {
   };
 
   const handleCreateWorkorderFromBooking = async (booking, gardenerId, caseNumber, date, time, price) => {
+    console.log('[DEBUG] เริ่มสร้างงานจากนัดหมาย:', { bookingId: booking.id, gardenerId, caseNumber });
     try {
       const gardener = gardeners.find(g => g.id === gardenerId);
       const customer = bookingCustomers[booking.id];
@@ -345,6 +366,25 @@ export default function CreateWorkorderPage() {
           console.error('[CREATE][Flex] ERROR (จากนัดหมาย)', flexErr);
         }
       }
+
+      // แจ้งเตือนแอดมินเมื่อสร้างงานจากนัดหมาย
+      try {
+        const notificationData = {
+          customerName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
+          serviceName: serviceName,
+          appointmentDate: date || booking.date || new Date().toISOString().slice(0, 10),
+          appointmentTime: time || booking.time || '',
+          totalPrice: price ? parseInt(price) : (booking.price ? parseInt(booking.price) : 0),
+          staffName: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || 'พนักงาน',
+          caseNumber: caseNumber || ''
+        };
+        console.log('[CREATE] เตรียมแจ้งเตือนแอดมิน (จากนัดหมาย):', notificationData);
+        await sendBookingNotification(notificationData, 'workorderAssigned');
+        console.log('[CREATE] แจ้งเตือนแอดมินสำเร็จ (จากนัดหมาย)');
+      } catch (adminNotifyErr) {
+        console.error('[CREATE] แจ้งเตือนแอดมิน ERROR (จากนัดหมาย)', adminNotifyErr);
+      }
+
       alert("สร้างงานจากการนัดหมายสำเร็จ!");
       // redirect ไปหน้า workorder
       // ไปยังหน้ารายวันของวันที่นัดหมาย

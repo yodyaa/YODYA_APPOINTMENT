@@ -168,7 +168,7 @@ export default function MonthlyDashboardPage() {
           </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-          <div className="text-sm text-gray-600">วันเต็ม/ยุ่ง</div>
+          <div className="text-sm text-gray-600">วันเต็ม</div>
           <div className="text-2xl font-bold text-red-600">
             {summary.busyDays} วัน
           </div>

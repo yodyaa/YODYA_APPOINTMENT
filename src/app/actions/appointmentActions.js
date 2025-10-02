@@ -121,7 +121,25 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
                 appointmentTime: time,
                 totalPrice: finalAppointmentData.paymentInfo?.totalPrice ?? 0
             };
-            await sendBookingNotification(notificationData, 'newBooking');
+            // Debug: log notification settings
+            console.log('[AdminNotify] settings:', JSON.stringify(notificationSettings));
+            let lineNotifications = notificationSettings.lineNotifications;
+            let adminNotifications = notificationSettings.adminNotifications;
+            // If missing, try to get from notificationSettings.settings (in case of nested structure)
+            if (!lineNotifications || !adminNotifications) {
+                if (notificationSettings.settings) {
+                    if (!lineNotifications) lineNotifications = notificationSettings.settings.lineNotifications;
+                    if (!adminNotifications) adminNotifications = notificationSettings.settings.adminNotifications;
+                }
+            }
+            console.log('[DEBUG] lineNotifications:', lineNotifications);
+            console.log('[DEBUG] adminNotifications:', adminNotifications);
+            // Let sendBookingNotification handle the logic (it already has proper default handling)
+            if (adminNotifications && adminNotifications.newBooking) {
+                await sendBookingNotification(notificationData, 'newBooking');
+            } else {
+                console.log('[AdminNotify] Admin notification for newBooking is disabled in settings.');
+            }
         } catch (notificationError) {
             console.error('Error sending admin notification:', notificationError);
         }
