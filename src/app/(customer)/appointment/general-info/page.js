@@ -161,23 +161,7 @@ function GeneralInfoContent() {
                 });
             }
 
-            // แจ้งเตือนแอดมินเมื่อลูกค้าจองเอง
-            try {
-                const adminNotificationData = {
-                    customerName: formData.fullName || 'ลูกค้า',
-                    serviceName: service?.serviceName || 'บริการ',
-                    appointmentDate: date,
-                    appointmentTime: time,
-                    totalPrice: finalPrice || 0
-                };
-                
-                console.log('[CUSTOMER BOOKING] เตรียมแจ้งเตือนแอดมิน:', adminNotificationData);
-                await sendBookingNotification(adminNotificationData, 'newBooking');
-                console.log('[CUSTOMER BOOKING] แจ้งเตือนแอดมินสำเร็จ');
-            } catch (adminNotifyErr) {
-                console.error('[CUSTOMER BOOKING] แจ้งเตือนแอดมิน ERROR:', adminNotifyErr);
-                // ไม่หยุดการทำงาน แค่ log error
-            }
+            // ลบการแจ้งเตือนแอดมินซ้ำ (แจ้งเตือนใน server action เท่านั้น)
 
             showToast('จองสำเร็จ! กำลังพาไปหน้านัดหมาย', "success", "จองสำเร็จ");
             setTimeout(() => {

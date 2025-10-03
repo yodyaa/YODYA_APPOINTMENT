@@ -119,7 +119,7 @@ export default function MonthlyDashboardPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto p-4 md:p-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">แดชบอร์ดรายเดือน</h1>

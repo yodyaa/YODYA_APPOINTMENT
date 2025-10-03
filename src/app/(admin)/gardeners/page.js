@@ -151,11 +151,14 @@ export default function GardenersListPage() {
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0 h-10 w-10">
                                         <Image
-                                            className="h-10 w-10 rounded-full object-cover"
-                                            src={gardener.imageUrl || 'https://via.placeholder.com/150'}
+                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                            src={gardener.profileImageUrl || gardener.imageUrl || 'https://via.placeholder.com/150?text=' + encodeURIComponent((gardener.firstName?.charAt(0) || '') + (gardener.lastName?.charAt(0) || ''))}
                                             alt={`${gardener.firstName} ${gardener.lastName}`}
                                             width={40}
                                             height={40}
+                                            onError={(e) => {
+                                                e.target.src = 'https://via.placeholder.com/150?text=' + encodeURIComponent((gardener.firstName?.charAt(0) || '') + (gardener.lastName?.charAt(0) || ''));
+                                            }}
                                         />
                                     </div>
                                     <div className="ml-4">

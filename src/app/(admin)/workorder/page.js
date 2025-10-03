@@ -226,6 +226,49 @@ export default function WorkorderAdminPage() {
         if (!result.success) {
           throw new Error(result.error || 'เกิดข้อผิดพลาดในการอัปเดตสถานะ');
         }
+
+        // อัพเดท appointment ที่เกี่ยวข้องกับ workorder นี้ (ถ้ามี)
+        if (field === 'processStatus') {
+          const workorder = workorders.find(w => w.id === workorderId);
+          const relatedAppointmentId = workorder?.bookingId;
+          
+          if (relatedAppointmentId) {
+            try {
+              let appointmentStatus = 'confirmed'; // default
+              if (value === 'เสร็จสิ้น') {
+                appointmentStatus = 'completed';
+              } else if (value === 'ช่างกำลังดำเนินการ') {
+                appointmentStatus = 'in_progress';
+              } else if (value === 'อยู่ในแผนงาน') {
+                appointmentStatus = 'confirmed';
+              }
+
+              // อัพเดท appointment status และ processStatus
+              await updateDoc(doc(db, "appointments", relatedAppointmentId), {
+                status: appointmentStatus,
+                processStatus: value,
+                updatedAt: new Date()
+              });
+
+              // อัพเดท state ของ appointments ด้วย
+              setAppointments(prev => prev.map(a => 
+                a.id === relatedAppointmentId 
+                  ? { ...a, status: appointmentStatus, processStatus: value }
+                  : a
+              ));
+
+              console.log('[WORKORDER] อัพเดท appointment สำเร็จ:', {
+                appointmentId: relatedAppointmentId,
+                newStatus: appointmentStatus,
+                processStatus: value
+              });
+            } catch (appointmentUpdateErr) {
+              console.error('[WORKORDER] ERROR อัพเดท appointment:', appointmentUpdateErr);
+              // ไม่หยุดการทำงาน แค่ log error
+            }
+          }
+        }
+
         // คำนวณและอัปเดตสถิติทันทีหลังบันทึกข้อมูล workorder
         const stats = await calculateDayStats();
         setDayStats(stats);

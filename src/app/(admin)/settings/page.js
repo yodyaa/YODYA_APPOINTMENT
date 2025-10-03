@@ -306,7 +306,7 @@ export default function AdminSettingsPage() {
     if (loading) return <div className="text-center p-10">กำลังโหลดการตั้งค่า...</div>;
 
     return (
-        <div className="container mx-auto p-4 md:p-6">
+        <div className="container mx-auto p-4 md:p-8">
             <div className="flex justify-between items-center mb-6 ">
                 <h1 className="text-2xl font-bold text-slate-800">ตั้งค่าระบบ</h1>
                 <button

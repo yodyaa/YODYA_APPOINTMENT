@@ -10,7 +10,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
     const statusInfo = {
         'awaiting_confirmation': { text: 'รอยืนยัน' },
         'confirmed': { text: 'ยืนยันแล้ว' },
-        'in_progress': { text: 'กำลังใช้บริการ' },
+        'in_progress': { text: 'ช่างกำลังดำเนินการ' },
     }[job.status] || { text: job.status };
 
     const appointmentDateTime = job.appointmentInfo.dateTime.toDate();
@@ -55,7 +55,7 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
                     </div>
                 </div>
             </div>
-            {job.status === 'confirmed' && (
+            {(job.status === 'confirmed' || job.status === 'in_progress') && (
                 <div className="p-5">
                     <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm mb-2">
                         <div className="font-semibold text-gray-700">เคสที่</div>
@@ -66,10 +66,10 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
                             {Array.isArray(job.serviceInfo)
                                 ? job.serviceInfo.map(s => s.name).filter(Boolean).join(', ')
                                 : job.serviceInfo?.name
-                                    || job.workorderInfo?.workorder
-                                    || (job.appointmentInfo?.addOns?.length > 0
-                                        ? job.appointmentInfo.addOns.map(a => a.name).filter(Boolean).join(', ')
-                                        : '-')}
+                                || job.workorderInfo?.workorder
+                                || (job.appointmentInfo?.addOns?.length > 0
+                                    ? job.appointmentInfo.addOns.map(a => a.name).filter(Boolean).join(', ')
+                                    : '-')}
                         </div>
                         <div className="font-semibold text-gray-700">ราคา (บาท)</div>
                         <div className="text-gray-900">

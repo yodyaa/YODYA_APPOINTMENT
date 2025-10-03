@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/app/lib/firebase';  
+import { auth, db, storage } from '@/app/lib/firebase';  
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import Image from 'next/image';
 
 export default function RegisterStaffPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +19,9 @@ export default function RegisterStaffPage() {
     role: 'employee', // [!code focus]
     status: 'available'
   });
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -24,6 +29,49 @@ export default function RegisterStaffPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // ตรวจสอบ file type
+      if (!file.type.startsWith('image/')) {
+        setError('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+        return;
+      }
+      // ตรวจสอบ file size (ไม่เกิน 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB');
+        return;
+      }
+      
+      setProfileImage(file);
+      
+      // สร้าง preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setError(''); // Clear error if valid
+    }
+  };
+
+  const uploadProfileImage = async (userId) => {
+    if (!profileImage) return null;
+    
+    try {
+      setUploadingImage(true);
+      const imageRef = ref(storage, `staff-profiles/${userId}/${profileImage.name}`);
+      const snapshot = await uploadBytes(imageRef, profileImage);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -48,16 +96,30 @@ export default function RegisterStaffPage() {
       });
 
       // [!code focus start]
+      // อัพโหลดรูปภาพก่อน (ถ้ามี)
+      let profileImageUrl = null;
+      if (profileImage) {
+        try {
+          profileImageUrl = await uploadProfileImage(user.uid);
+        } catch (imageError) {
+          console.error('Error uploading image:', imageError);
+          // ถ้าอัพโหลดรูปไม่สำเร็จ ยังคงสร้าง account ได้ แต่ไม่มีรูป
+          setError('อัพโหลดรูปภาพไม่สำเร็จ แต่การลงทะเบียนจะดำเนินการต่อ');
+        }
+      }
+      
       // เปลี่ยนเป้าหมายการบันทึกตาม role ที่เลือก
       const targetCollection = formData.role === 'admin' ? 'admins' : 'employees';
       const dataToSave = {
         uid: user.uid,
         firstName: formData.firstName,
         lastName: formData.lastName,
+        fullName: `${formData.firstName} ${formData.lastName}`.trim(),
         phoneNumber: formData.phone,
         email: user.email,
         lineUserId: formData.lineUserId,
         status: formData.status,
+        profileImageUrl: profileImageUrl,
         createdAt: serverTimestamp(),
       };
 
@@ -146,10 +208,51 @@ export default function RegisterStaffPage() {
                         <input name="lineUserId" value={formData.lineUserId} onChange={handleChange} placeholder="U12345..." className="w-full mt-1 p-2 border rounded-md"/>
                     </div>
                     
+                    {/* Profile Image Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">รูปโปรไฟล์ (ถ้ามี)</label>
+                        <div className="mt-1">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                ไฟล์รูปภาพ (JPG, PNG) ขนาดไม่เกิน 5MB
+                            </p>
+                        </div>
+                        
+                        {/* Image Preview */}
+                        {profileImagePreview && (
+                            <div className="mt-3">
+                                <p className="text-sm font-medium text-gray-700 mb-2">ตัวอย่างรูปภาพ:</p>
+                                <div className="relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden">
+                                    <Image
+                                        src={profileImagePreview}
+                                        alt="Profile Preview"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setProfileImage(null);
+                                        setProfileImagePreview(null);
+                                    }}
+                                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                                >
+                                    ลบรูปภาพ
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    
                     {error && <p className="text-red-500 text-sm text-center font-semibold">{error}</p>}
                     
-                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                      {loading ? 'กำลังบันทึก...' : 'ลงทะเบียนผู้ใช้'}
+                    <button type="submit" disabled={loading || uploadingImage} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                      {uploadingImage ? 'กำลังอัพโหลดรูปภาพ...' : loading ? 'กำลังบันทึก...' : 'ลงทะเบียนผู้ใช้'}
                     </button>
                 </form>
             </div>

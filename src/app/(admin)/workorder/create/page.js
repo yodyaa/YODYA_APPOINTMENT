@@ -5,6 +5,7 @@ import { collection, getDocs, query, where, addDoc, orderBy } from "firebase/fir
 import { sendWorkorderConfirmedFlex } from '@/app/actions/workorderActions';
 import { sendBookingNotification } from '@/app/actions/lineActions';
 import { useRouter } from "next/navigation";
+import { useToast } from '@/app/components/Toast';
 import { format, startOfDay, endOfDay, parseISO } from "date-fns";
 
 const STATUSES = {
@@ -21,6 +22,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function CreateWorkorderPage() {
+  const { showToast } = useToast();
   const router = useRouter();
   const [form, setForm] = useState({
     idKey: "",
@@ -278,13 +280,13 @@ export default function CreateWorkorderPage() {
         console.error('[CREATE] แจ้งเตือนแอดมิน ERROR', adminNotifyErr);
       }
 
-      alert("สร้างงานใหม่สำเร็จ!");
+  showToast("สร้างงานใหม่สำเร็จ!", "success");
       // redirect ไปหน้า workorder
       // ไปยังหน้ารายวันของวันที่นัดหมาย
       const gotoDate = workorderData.date || new Date().toISOString().slice(0, 10);
       router.push(`/workorder?date=${gotoDate}`);
     } catch (err) {
-      alert("เกิดข้อผิดพลาดในการบันทึกงาน");
+  showToast("เกิดข้อผิดพลาดในการบันทึกงาน", "error");
     }
   };
 
@@ -396,7 +398,7 @@ export default function CreateWorkorderPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto p-4 md:p-8">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">สร้างงานใหม่</h1>
       {/* ฟิลเตอร์เหมือน dashboard */}
       <div className="flex flex-wrap items-center gap-4 mb-8 text-black">

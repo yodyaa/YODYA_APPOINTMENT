@@ -3,9 +3,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { db } from '@/app/lib/firebase';
+import { db, storage } from '@/app/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useToast } from '@/app/components/Toast';
 
 export default function EditGardenerPage() {
@@ -20,6 +22,10 @@ export default function EditGardenerPage() {
     position: ''
   });
   // [!code focus end]
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [existingImageUrl, setExistingImageUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { id } = useParams();
@@ -27,15 +33,13 @@ export default function EditGardenerPage() {
 
   useEffect(() => {
     if (!id) return;
-  const fetchGardener = async () => {
+    const fetchGardener = async () => {
       setLoading(true);
       try {
-  const docRef = doc(db, "gardeners", id);
+        const docRef = doc(db, "gardeners", id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          // [!code focus start]
           const data = docSnap.data();
-          // ตั้งค่า state โดยให้มีค่า fallback เป็นสตริงว่างเสมอ
           setFormData({
             firstName: data.firstName || '',
             lastName: data.lastName || '',
@@ -45,7 +49,7 @@ export default function EditGardenerPage() {
             status: data.status || 'available',
             position: data.position || ''
           });
-          // [!code focus end]
+          setExistingImageUrl(data.profileImageUrl || data.imageUrl || '');
         } else {
           showToast("ไม่พบข้อมูลช่าง", "error");
           router.push('/gardeners');
@@ -57,8 +61,45 @@ export default function EditGardenerPage() {
         setLoading(false);
       }
     };
-  fetchGardener();
+    fetchGardener();
   }, [id, router, showToast]);
+  // ฟังก์ชันเลือกรูปภาพและ preview
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB', 'error');
+        return;
+      }
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // ฟังก์ชันอัพโหลดรูปภาพไป Firebase Storage
+  const uploadProfileImage = async (gardenerId) => {
+    if (!profileImage) return null;
+    try {
+      setUploadingImage(true);
+      const imageRef = ref(storage, `gardener-profiles/${gardenerId}/${Date.now()}_${profileImage.name}`);
+      const snapshot = await uploadBytes(imageRef, profileImage);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -69,10 +110,24 @@ export default function EditGardenerPage() {
     e.preventDefault();
     setLoading(true);
     try {
-  const docRef = doc(db, "gardeners", id);
-        await updateDoc(docRef, formData);
-        showToast("อัปเดตข้อมูลช่างสำเร็จ!", "success");
-  router.push('/gardeners');
+      const docRef = doc(db, "gardeners", id);
+      let updateData = {
+        ...formData,
+        fullName: `${formData.firstName} ${formData.lastName}`.trim()
+      };
+      if (profileImage) {
+        try {
+          const newImageUrl = await uploadProfileImage(id);
+          updateData.profileImageUrl = newImageUrl;
+          updateData.imageUrl = newImageUrl;
+        } catch (imageError) {
+          console.error('Error uploading image:', imageError);
+          showToast('อัพโหลดรูปภาพไม่สำเร็จ แต่จะอัพเดทข้อมูลอื่นต่อ', 'warning');
+        }
+      }
+      await updateDoc(docRef, updateData);
+      showToast("อัปเดตข้อมูลช่างสำเร็จ!", "success");
+      router.push('/gardeners');
     } catch (error) {
       console.error("Error updating document: ", error);
       showToast("เกิดข้อผิดพลาด: " + error.message, "error");
@@ -122,12 +177,76 @@ export default function EditGardenerPage() {
           <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
           <input type="text" name="lineUserId" placeholder="U12345..." value={formData.lineUserId} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
         </div>
+        {/* Profile Image Upload Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">URL รูปภาพ (ถ้ามี)</label>
-          <input type="url" name="imageUrl" placeholder="https://example.com/photo.jpg" value={formData.imageUrl} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
+          <label className="block text-sm font-medium text-gray-700">รูปโปรไฟล์</label>
+          {/* Current Image Display */}
+          {existingImageUrl && !profileImagePreview && (
+            <div className="mt-2 mb-3">
+              <p className="text-sm text-gray-600 mb-2">รูปปัจจุบัน:</p>
+              <div className="relative w-24 h-24 border border-gray-300 rounded-lg overflow-hidden">
+                <Image
+                  src={existingImageUrl}
+                  alt="Current Profile"
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/150?text=' + encodeURIComponent((formData.firstName?.charAt(0) || '') + (formData.lastName?.charAt(0) || ''));
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div className="mt-1 space-y-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+            <p className="text-xs text-gray-500">
+              อัพโหลดรูปภาพใหม่ (JPG, PNG) ขนาดไม่เกิน 5MB หรือใส่ URL รูปภาพด้านล่าง
+            </p>
+          </div>
+          {/* New Image Preview */}
+          {profileImagePreview && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-gray-700 mb-2">ตัวอย่างรูปภาพใหม่:</p>
+              <div className="relative w-24 h-24 border border-gray-300 rounded-lg overflow-hidden">
+                <Image
+                  src={profileImagePreview}
+                  alt="New Profile Preview"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileImage(null);
+                  setProfileImagePreview(null);
+                }}
+                className="mt-2 text-sm text-red-600 hover:text-red-800"
+              >
+                ยกเลิกรูปใหม่
+              </button>
+            </div>
+          )}
+          {/* URL Input as alternative */}
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700">หรือใส่ URL รูปภาพ</label>
+            <input 
+              type="url" 
+              name="imageUrl" 
+              placeholder="https://example.com/photo.jpg" 
+              value={formData.imageUrl} 
+              onChange={handleChange} 
+              className="w-full mt-1 p-2 border rounded-md"
+            />
+          </div>
         </div>
-                <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400">
-                  {loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
+                <button type="submit" disabled={loading || uploadingImage} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400">
+                  {uploadingImage ? 'กำลังอัพโหลดรูปภาพ...' : loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
                 </button>
             </form>
         </div>

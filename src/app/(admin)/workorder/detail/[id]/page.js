@@ -74,7 +74,7 @@ export default function WorkorderDetailPage({ params }) {
   }
 
   return (
-  <div className="container mx-auto px-2 py-6 text-sm">
+  <div className="ccontainer mx-auto p-4 md:p-8">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6 flex justify-between items-center">
         <div>
