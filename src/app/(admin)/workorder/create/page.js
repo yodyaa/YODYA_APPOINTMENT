@@ -537,13 +537,13 @@ export default function CreateWorkorderPage() {
                   const customer = bookingCustomers[b.id];
                   const bookingPhone = b.phone || b.customerInfo?.phone || b.customerPhone || b.contact || '';
                   const bookingName = b.fullName || b.customerInfo?.fullName || b.customerName || '';
-                  const bookingLineId = b.lineUserId || b.customerInfo?.lineUserId || '';
+                  const bookingLineId = b.lineUserId || b.customerInfo?.customerId || '';
                   const displayName = bookingName || customer?.fullName || customer?.name || 'ไม่ระบุชื่อ';
                   const displayPhone = bookingPhone || customer?.phone || 'ไม่ระบุเบอร์';
                   const displayAddress = customer?.address || b.address || b.customerInfo?.address || 'ไม่ระบุที่อยู่';
                   const displayVillage = customer?.village || b.village || b.customerInfo?.village || 'ไม่ระบุหมู่บ้าน';
                   const displayNote = b.note || b.customerInfo?.note || customer?.note || 'ไม่มีหมายเหตุ';
-                  const displayLineId = bookingLineId || customer?.userId || customer?.lineUserId || 'ไม่มี LINE ID';
+                  const displayLineId = bookingLineId || customer?.userId || customer?.customerId || 'ไม่มี LINE ID';
                   return (
                     <>
                       <div className="font-bold text-lg text-indigo-800 mb-2">{displayName}</div>
@@ -555,7 +555,7 @@ export default function CreateWorkorderPage() {
                           // Hide actual LINE ID, show SVG icon only
                           // If there is a valid LINE ID (not default/empty), show green connected icon
                           // If booked by admin (no LINE ID), show gray disconnected icon
-                          const isConnected = displayLineId !== 'U8d286780c70cf7d60a0ff5704dcf2319' && displayLineId !== 'ไม่มี LINE ID';
+                          const isConnected = !!displayLineId && displayLineId && displayLineId !== 'ไม่มี LINE ID';
                           if (isConnected) {
                             // Connected SVG (green)
                             return (
