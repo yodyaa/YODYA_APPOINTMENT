@@ -18,30 +18,40 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
 
     return (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden transition-all hover:shadow-xl">
-            <div className="bg-primary p-5 text-white flex flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4">
-                    {/* รูปภาพบริการ: fallback ไป workorderInfo.imageUrl */}
-                    {(job.serviceInfo?.imageUrl || job.workorderInfo?.imageUrl) && (
-                        <img
-                            src={job.serviceInfo?.imageUrl || job.workorderInfo?.imageUrl}
-                            alt={job.serviceInfo?.name || job.workorderInfo?.workorder || "Service"}
-                            className="w-20 h-20 object-cover rounded-lg border-2 border-white shadow-md bg-white"
-                        />
-                    )}
-                    <div>
-                        <div className="text-xs opacity-80 mb-1 flex items-center gap-2">
-                            <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
-                            นัดหมายบริการ
-                        </div>
-                        <div className="font-bold text-lg tracking-wide text-white/80">{format(appointmentDateTime, 'dd MMM yyyy, HH:mm น.', { locale: th })}</div>
-                        {job.status === 'awaiting_confirmation' && (
-                            <div className="text-xs text-white/60 mt-1">บริการที่จอง: {job.serviceInfo?.name || '-'}</div>
+            <div className="bg-primary p-5 text-white">
+                <div className="flex flex-row justify-between items-start gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* รูปภาพบริการ: fallback ไป workorderInfo.imageUrl */}
+                        {(job.serviceInfo?.imageUrl || job.workorderInfo?.imageUrl) && (
+                            <img
+                                src={job.serviceInfo?.imageUrl || job.workorderInfo?.imageUrl}
+                                alt={job.serviceInfo?.name || job.workorderInfo?.workorder || "Service"}
+                                className="w-16 h-16 flex-shrink-0 object-cover rounded-lg border-2 border-white shadow-md bg-white"
+                            />
                         )}
+                        <div className="flex-1 min-w-0">
+                            <div className="text-xs opacity-80 mb-1 flex items-center gap-2">
+                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                <span className="truncate">นัดหมายบริการ</span>
+                            </div>
+                            {/* แยกวันที่และเวลาออกเป็นคนละบรรทัด */}
+                            <div className="font-bold text-base leading-tight text-white/90">
+                                {format(appointmentDateTime, 'dd MMM yyyy', { locale: th })}
+                            </div>
+                            <div className="font-semibold text-sm text-white/80 mt-0.5">
+                                {format(appointmentDateTime, 'HH:mm น.', { locale: th })}
+                            </div>
+                            {job.status === 'awaiting_confirmation' && (
+                                <div className="text-xs text-white/60 mt-1 truncate">
+                                    บริการ: {job.serviceInfo?.name || '-'}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-                <div className="flex flex-col items-end mt-4 md:mt-0">
-                    <div className="text-sm font-bold px-2 py-1 rounded-full bg-white/20 border border-white/30 shadow-sm">
-                        {statusInfo.text}
+                    <div className="flex flex-col items-end flex-shrink-0">
+                        <div className="text-xs font-bold px-3 py-1.5 rounded-full bg-white/20 border border-white/30 shadow-sm whitespace-nowrap">
+                            {statusInfo.text}
+                        </div>
                     </div>
                 </div>
             </div>
