@@ -20,7 +20,12 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-        // คุณสามารถเพิ่ม hostname อื่นๆ ที่นี่ได้
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
       ],
     },
   };
