@@ -150,6 +150,18 @@ export default function WorkorderAdminPage() {
       }));
       try {
         const updateData = typeof value === 'object' ? { [field]: value } : { [field]: value };
+        
+        // ถ้าเปลี่ยน processStatus ให้อัปเดต status ตามเงื่อนไข
+        if (field === 'processStatus') {
+          if (value === 'เสร็จสิ้น') {
+            updateData.status = 'completed';
+          } else if (value === 'ช่างกำลังดำเนินการ') {
+            updateData.status = 'in_progress';
+          } else if (value === 'อยู่ในแผนงาน') {
+            updateData.status = 'confirmed';
+          }
+        }
+        
         // ดึงข้อมูล appointment เดิม
         const docSnap = await getDoc(doc(db, "appointments", workorderId));
         const oldData = docSnap.exists() ? docSnap.data() : {};
@@ -168,7 +180,7 @@ export default function WorkorderAdminPage() {
             notifyProcessing: customerNotifySettings.notifyProcessing,
             notifyCompleted: customerNotifySettings.notifyCompleted
           });
-          if (value === 'กำลังดำเนินการ' && customerNotifySettings.notifyProcessing) {
+          if (value === 'ช่างกำลังดำเนินการ' && customerNotifySettings.notifyProcessing) {
             console.log('[LINE FLEX] เรียก sendAppointmentConfirmedFlexMessage', { customerLineId, appointmentData });
             const result = await sendAppointmentConfirmedFlexMessage(customerLineId, appointmentData);
             console.log('[LINE FLEX] ผลลัพธ์ sendAppointmentConfirmedFlexMessage', result);

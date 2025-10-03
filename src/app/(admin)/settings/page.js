@@ -2,8 +2,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from '@/app/lib/firebase';
+import { db, storage } from '@/app/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import Image from 'next/image';
 import { 
     // --- IMPORT FUNCTION ใหม่ ---
     saveProfileSettings,
@@ -102,7 +104,12 @@ export default function AdminSettingsPage() {
         description: '',
         currency: '฿',
         currencySymbol: 'บาท',
+        logoUrl: '',
     });
+    
+    const [logoFile, setLogoFile] = useState(null);
+    const [logoPreview, setLogoPreview] = useState('');
+    const [uploadingLogo, setUploadingLogo] = useState(false);
     
     // Other functional states (โค้ดเดิม)
     const [allAdmins, setAllAdmins] = useState([]);
@@ -163,6 +170,46 @@ export default function AdminSettingsPage() {
         fetchInitialData();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                showToast("ไฟล์รูปภาพต้องมีขนาดไม่เกิน 5MB", "error");
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                showToast("กรุณาเลือกไฟล์รูปภาพเท่านั้น", "error");
+                return;
+            }
+            setLogoFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setLogoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const uploadLogo = async () => {
+        if (!logoFile) return profileSettings.logoUrl;
+        
+        setUploadingLogo(true);
+        try {
+            const timestamp = Date.now();
+            const fileName = `logos/${timestamp}_${logoFile.name}`;
+            const storageRef = ref(storage, fileName);
+            await uploadBytes(storageRef, logoFile);
+            const downloadURL = await getDownloadURL(storageRef);
+            return downloadURL;
+        } catch (error) {
+            console.error("Error uploading logo: ", error);
+            showToast("เกิดข้อผิดพลาดในการอัปโหลดโลโก้", "error");
+            return profileSettings.logoUrl;
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
     const handleNotificationChange = async (group, key, value) => {
         setSettings(prev => {
             const newSettings = { ...prev, [group]: { ...prev[group], [key]: value } };
@@ -193,13 +240,23 @@ export default function AdminSettingsPage() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            // อัปโหลดโลโก้ก่อน (ถ้ามี)
+            let logoUrl = profileSettings.logoUrl;
+            if (logoFile) {
+                const uploadedUrl = await uploadLogo();
+                if (uploadedUrl) {
+                    logoUrl = uploadedUrl;
+                }
+            }
+
             // เตรียมข้อมูลแต่ละส่วน (โค้ดเดิม)
             const { updatedAt: nUpdatedAt, ...notificationData } = settings;
             const { updatedAt: bUpdatedAt, ...bookingData } = bookingSettings;
             const { updatedAt: payUpdatedAt, ...paymentData } = paymentSettings;
             const { updatedAt: calUpdatedAt, ...calData } = calendarSettings;
-            // --- NEW: เตรียมข้อมูล profile ---
-            const { updatedAt: profUpdatedAt, ...profData } = profileSettings;
+            // --- NEW: เตรียมข้อมูล profile (ลบ updatedAt ออก) ---
+            const { updatedAt: profUpdatedAt, ...profDataRaw } = profileSettings;
+            const profData = { ...profDataRaw, logoUrl };
 
             const results = await Promise.all([
                 saveProfileSettings(profData),
@@ -262,6 +319,23 @@ export default function AdminSettingsPage() {
                 <div className="space-y-6">
                     <SettingsCard title="โปรไฟล์ร้าน">
                         <div className="space-y-2">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">โลโก้ร้าน</label>
+                                <div className="space-y-2">
+                                    {(logoPreview || profileSettings.logoUrl) && (
+                                        <div className="relative w-24 h-24 border rounded-lg overflow-hidden">
+                                            <Image src={logoPreview || profileSettings.logoUrl} alt="Logo" fill style={{ objectFit: 'contain' }} className="bg-gray-50" />
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleLogoChange}
+                                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    />
+                                    <p className="text-xs text-gray-500">แนะนำขนาด 200x200px, ไฟล์ไม่เกิน 5MB</p>
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">ชื่อร้าน</label>
                                 <input type="text" value={profileSettings.storeName || ''} onChange={e => setProfileSettings({...profileSettings, storeName: e.target.value})} className="border rounded-md px-2 py-1 w-full text-sm"/>

@@ -37,14 +37,6 @@ const navLinks = [
       { name: "ลูกค้า", href: "/customers" },
     ]
   },
-  
-  {
-    name: "วิเคราะห์/รีวิว",
-    items: [
-      { name: "วิเคราะห์", href: "/analytics" },
-      { name: "รีวิวลูกค้า", href: "/reviews" },
-    ]
-  },
   {
     name: "ตั้งค่า",
     items: [
@@ -164,6 +156,12 @@ export default function AdminNavbar() {
       clearTimeout(autoCloseTimeoutRef.current);
       autoCloseTimeoutRef.current = null;
     }
+    
+    // เมื่อเปิดกล่องแจ้งเตือน ให้ทำเครื่องหมายอ่านแล้วทั้งหมด
+    if (!isNotifOpen && hasUnread) {
+      markAllAsRead();
+    }
+    
     setIsNotifOpen(!isNotifOpen);
   };
 
@@ -220,22 +218,12 @@ export default function AdminNavbar() {
                   {/* Header */}
                   <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 className="font-semibold text-gray-800">แจ้งเตือน</h3>
-                    <div className="flex gap-2">
-                      {hasUnread && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50"
-                        >
-                          อ่านทั้งหมด
-                        </button>
-                      )}
-                      <button
-                        onClick={clearAllToasts}
-                        className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
-                      >
-                        ลบทั้งหมด
-                      </button>
-                    </div>
+                    <button
+                      onClick={clearAllToasts}
+                      className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
+                    >
+                      ลบทั้งหมด
+                    </button>
                   </div>
 
                   {/* รายการแจ้งเตือน */}
@@ -252,9 +240,7 @@ export default function AdminNavbar() {
                       toasts.slice(-5).reverse().map(toast => (
                         <div
                           key={toast.id}
-                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                            !toast.read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                          }`}
+                          className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-start gap-3">
                             <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
@@ -264,7 +250,7 @@ export default function AdminNavbar() {
                             }`}></div>
                             
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${!toast.read ? 'font-medium' : ''} ${
+                              <p className={`text-sm ${
                                 toast.type === 'error' ? 'text-red-700' : 
                                 toast.type === 'success' ? 'text-green-700' : 
                                 toast.type === 'warning' ? 'text-yellow-700' : 'text-blue-700'
@@ -278,24 +264,13 @@ export default function AdminNavbar() {
                               )}
                             </div>
 
-                            <div className="flex gap-1">
-                              {!toast.read && (
-                                <button
-                                  onClick={() => markAsRead(toast.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-100"
-                                  title="อ่านแล้ว"
-                                >
-                                  อ่าน
-                                </button>
-                              )}
-                              <button
-                                onClick={() => removeToast(toast.id)}
-                                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-100"
-                                title="ลบ"
-                              >
-                                ลบ
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => removeToast(toast.id)}
+                              className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-100 flex-shrink-0"
+                              title="ลบ"
+                            >
+                              ลบ
+                            </button>
                           </div>
                         </div>
                       ))
