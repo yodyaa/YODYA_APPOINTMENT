@@ -20,7 +20,7 @@ const notoSansThai = Noto_Sans_Thai({
 
 
 export const metadata = {
-  title: "ํYODYA",
+  title: "YODYA",
   description: "ระบบจัดการงานจัดสวนและภูมิทัศน์",
 };
 
