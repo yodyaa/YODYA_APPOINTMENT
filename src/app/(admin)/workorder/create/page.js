@@ -77,87 +77,87 @@ export default function CreateWorkorderPage() {
     status: 'awaiting_confirmation',
   });
 
-  useEffect(() => {
-    // โหลดงานที่สร้างแล้ว
-    const fetchCreatedWorkorders = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "workorders"));
-        const workorders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // สร้าง map จาก bookingId
-        const map = {};
-        workorders.forEach(w => {
-          if (w.bookingId) map[w.bookingId] = true;
-        });
-        setCreatedWorkorders(map);
-      } catch (err) {
-        setCreatedWorkorders({});
-      }
-    };
-    fetchCreatedWorkorders();
-    // โหลดรายชื่อช่าง (gardeners) สำหรับมอบหมาย
-    const fetchGardeners = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "gardeners"));
-        setGardeners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (err) {
-        setGardeners([]);
-      }
-    };
-    fetchGardeners();
-    const fetchBookings = async () => {
-      try {
-        // ดึงนัดหมายทั้งหมด (ทุกสถานะ)
-        const q = query(collection(db, "appointments"), orderBy("appointmentInfo.dateTime", "desc"));
-        const snapshot = await getDocs(q);
-        let bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // ดึงข้อมูลลูกค้าสำหรับแต่ละการจอง
-        const customerSnapshot = await getDocs(collection(db, "customers"));
-        const customers = customerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllCustomers(customers);
-        // จับคู่ข้อมูลลูกค้ากับการจอง
-        const bookingsWithCustomers = {};
-        const normalizePhone = (phone) => {
-          if (!phone) return "";
-          const cleaned = phone.toString().replace(/[^\d]/g, "");
-          return [
-            cleaned,
-            cleaned.replace(/^0/, ""),
-            cleaned.replace(/^0/, "66"),
-            cleaned.length === 9 ? "0" + cleaned : cleaned
-          ];
-        };
-        bookings.forEach(booking => {
-          const phone = booking.phone || booking.customerInfo?.phone || booking.customerPhone || booking.contact || "";
-          const bookingPhones = normalizePhone(phone);
-          let foundCustomer = null;
-          if (phone) {
-            for (const customer of customers) {
-              const customerPhones = normalizePhone(customer.phone || customer.contact || "");
-              if (bookingPhones.some(bp => bp && customerPhones.includes(bp))) {
-                foundCustomer = customer;
-                break;
-              }
+  // --- โหลดข้อมูลหลัก ---
+  // ย้าย fetchBookings, fetchCreatedWorkorders, fetchGardeners ออกมาเป็นฟังก์ชันเพื่อเรียกซ้ำได้
+  const fetchCreatedWorkorders = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "workorders"));
+      const workorders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // สร้าง map จาก bookingId
+      const map = {};
+      workorders.forEach(w => {
+        if (w.bookingId) map[w.bookingId] = true;
+      });
+      setCreatedWorkorders(map);
+    } catch (err) {
+      setCreatedWorkorders({});
+    }
+  };
+  const fetchGardeners = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "gardeners"));
+      setGardeners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) {
+      setGardeners([]);
+    }
+  };
+  const fetchBookings = async () => {
+    try {
+      // ดึงนัดหมายทั้งหมด (ทุกสถานะ)
+      const q = query(collection(db, "appointments"), orderBy("appointmentInfo.dateTime", "desc"));
+      const snapshot = await getDocs(q);
+      let bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // ดึงข้อมูลลูกค้าสำหรับแต่ละการจอง
+      const customerSnapshot = await getDocs(collection(db, "customers"));
+      const customers = customerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllCustomers(customers);
+      // จับคู่ข้อมูลลูกค้ากับการจอง
+      const bookingsWithCustomers = {};
+      const normalizePhone = (phone) => {
+        if (!phone) return "";
+        const cleaned = phone.toString().replace(/[^\d]/g, "");
+        return [
+          cleaned,
+          cleaned.replace(/^0/, ""),
+          cleaned.replace(/^0/, "66"),
+          cleaned.length === 9 ? "0" + cleaned : cleaned
+        ];
+      };
+      bookings.forEach(booking => {
+        const phone = booking.phone || booking.customerInfo?.phone || booking.customerPhone || booking.contact || "";
+        const bookingPhones = normalizePhone(phone);
+        let foundCustomer = null;
+        if (phone) {
+          for (const customer of customers) {
+            const customerPhones = normalizePhone(customer.phone || customer.contact || "");
+            if (bookingPhones.some(bp => bp && customerPhones.includes(bp))) {
+              foundCustomer = customer;
+              break;
             }
           }
-          if (!foundCustomer && booking.customerInfo?.customerId) {
-            foundCustomer = customers.find(c => c.id === booking.customerInfo.customerId);
-          }
-          if (!foundCustomer && (booking.customerInfo?.fullName || booking.fullName)) {
-            const bookingName = booking.customerInfo?.fullName || booking.fullName || "";
-            foundCustomer = customers.find(c => {
-              const customerName = c.fullName || c.name || "";
-              return bookingName && customerName && bookingName.includes(customerName.trim());
-            });
-          }
-          bookingsWithCustomers[booking.id] = foundCustomer;
-        });
-        setBookingCustomers(bookingsWithCustomers);
-        setAllBookings(bookings);
-      } catch (err) {
-        setAllBookings([]);
-        setBookingCustomers({});
-      }
-    };
+        }
+        if (!foundCustomer && booking.customerInfo?.customerId) {
+          foundCustomer = customers.find(c => c.id === booking.customerInfo.customerId);
+        }
+        if (!foundCustomer && (booking.customerInfo?.fullName || booking.fullName)) {
+          const bookingName = booking.customerInfo?.fullName || booking.fullName || "";
+          foundCustomer = customers.find(c => {
+            const customerName = c.fullName || c.name || "";
+            return bookingName && customerName && bookingName.includes(customerName.trim());
+          });
+        }
+        bookingsWithCustomers[booking.id] = foundCustomer;
+      });
+      setBookingCustomers(bookingsWithCustomers);
+      setAllBookings(bookings);
+    } catch (err) {
+      setAllBookings([]);
+      setBookingCustomers({});
+    }
+  };
+  useEffect(() => {
+    fetchCreatedWorkorders();
+    fetchGardeners();
     fetchBookings();
   }, []);
   // ฟังก์ชันกรอง
@@ -387,7 +387,10 @@ export default function CreateWorkorderPage() {
         console.error('[CREATE] แจ้งเตือนแอดมิน ERROR (จากนัดหมาย)', adminNotifyErr);
       }
 
-      alert("สร้างงานจากการนัดหมายสำเร็จ!");
+  showToast("สร้างงานจากการนัดหมายสำเร็จ!", "success");
+  // refresh ข้อมูลทันที
+  fetchCreatedWorkorders();
+  fetchBookings();
       // redirect ไปหน้า workorder
       // ไปยังหน้ารายวันของวันที่นัดหมาย
       const gotoDate = date || booking.date || new Date().toISOString().slice(0, 10);
