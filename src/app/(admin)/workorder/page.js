@@ -12,6 +12,8 @@ export default function WorkorderAdminPage() {
   const router = useRouter();
   // State สำหรับ settings แจ้งเตือนลูกค้า (move inside component)
   const [customerNotifySettings, setCustomerNotifySettings] = useState({ notifyProcessing: true, notifyCompleted: true });
+  // State สำหรับ settings แจ้งเตือนแอดมินเมื่อเปลี่ยนสถานะเก็บเงิน
+  const [adminNotifySettings, setAdminNotifySettings] = useState({ collectionStatusChanged: true });
 
   // โหลด settings แจ้งเตือนลูกค้า จาก Firestore
   useEffect(() => {
@@ -24,10 +26,14 @@ export default function WorkorderAdminPage() {
             notifyProcessing: data?.customerNotifications?.notifyProcessing !== false,
             notifyCompleted: data?.customerNotifications?.notifyCompleted !== false
           });
+          setAdminNotifySettings({
+            collectionStatusChanged: data?.adminNotifications?.collectionStatusChanged !== false
+          });
         }
       } catch (e) {
         // fallback: เปิดไว้เสมอ
         setCustomerNotifySettings({ notifyProcessing: true, notifyCompleted: true });
+        setAdminNotifySettings({ collectionStatusChanged: true });
       }
     };
     fetchNotifySettings();
@@ -577,11 +583,14 @@ export default function WorkorderAdminPage() {
                                 // แจ้งเตือนแอดมินเมื่อเปลี่ยนสถานะเก็บเงิน
                                 if (newPaymentStatus && newPaymentStatus !== oldPaymentStatus) {
                                   try {
-                                    await notifyPaymentStatusChange(
-                                      { ...w, date: w.date || selectedDateStr },
-                                      newPaymentStatus,
-                                      oldPaymentStatus
-                                    );
+                                    // ตรวจสอบว่าเปิดการแจ้งเตือนหรือไม่
+                                    if (adminNotifySettings.collectionStatusChanged) {
+                                      await notifyPaymentStatusChange(
+                                        { ...w, date: w.date || selectedDateStr },
+                                        newPaymentStatus,
+                                        oldPaymentStatus
+                                      );
+                                    }
                                   } catch (adminNotifyErr) {
                                     console.error('[PAYMENT STATUS] แจ้งเตือนแอดมิน ERROR:', adminNotifyErr);
                                   }

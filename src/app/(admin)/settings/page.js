@@ -55,7 +55,9 @@ export default function AdminSettingsPage() {
             workorderCreated: true,
             workorderAssigned: true,
             workStatusChanged: true,
-            paymentStatusChanged: true
+            paymentStatusChanged: true,
+            // การแจ้งเตือนการเก็บเงิน
+            collectionStatusChanged: true, // เมื่อเปลี่ยนสถานะเก็บเงิน
         },
         customerNotifications: { 
             enabled: true,
@@ -139,7 +141,8 @@ export default function AdminSettingsPage() {
                             workorderCreated: typeof data.adminNotifications?.workorderCreated === 'boolean' ? data.adminNotifications.workorderCreated : true,
                             workorderAssigned: typeof data.adminNotifications?.workorderAssigned === 'boolean' ? data.adminNotifications.workorderAssigned : true,
                             workStatusChanged: typeof data.adminNotifications?.workStatusChanged === 'boolean' ? data.adminNotifications.workStatusChanged : true,
-                            paymentStatusChanged: typeof data.adminNotifications?.paymentStatusChanged === 'boolean' ? data.adminNotifications.paymentStatusChanged : true
+                            paymentStatusChanged: typeof data.adminNotifications?.paymentStatusChanged === 'boolean' ? data.adminNotifications.paymentStatusChanged : true,
+                            collectionStatusChanged: typeof data.adminNotifications?.collectionStatusChanged === 'boolean' ? data.adminNotifications.collectionStatusChanged : true
                         },
                         customerNotifications: {
                             ...prev.customerNotifications,
@@ -569,7 +572,10 @@ export default function AdminSettingsPage() {
                                 <Toggle label="เมื่อสร้างงานใหม่" checked={settings.adminNotifications.workorderCreated} onChange={(value) => handleNotificationChange('adminNotifications', 'workorderCreated', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                                 <Toggle label="เมื่อมอบหมายงานจากนัดหมาย" checked={settings.adminNotifications.workorderAssigned} onChange={(value) => handleNotificationChange('adminNotifications', 'workorderAssigned', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                                 <Toggle label="เมื่อเปลี่ยนสถานะงาน" checked={settings.adminNotifications.workStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'workStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
-                                <Toggle label="เมื่อเปลี่ยนสถานะเก็บเงิน" checked={settings.adminNotifications.paymentStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
+                                <Toggle label="เมื่อเปลี่ยนสถานะชำระเงิน" checked={settings.adminNotifications.paymentStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
+                                
+                                <div className="font-semibold text-gray-600 mt-2 mb-1">การเก็บเงิน</div>
+                                <Toggle label="เมื่อเปลี่ยนสถานะเก็บเงิน" checked={settings.adminNotifications.collectionStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'collectionStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                             </div>
                         )}
                          <hr/>
