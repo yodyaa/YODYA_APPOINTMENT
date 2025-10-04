@@ -81,6 +81,8 @@ function SelectDateTimeContent() {
     const [holidayDates, setHolidayDates] = useState([]);
     const [unavailableBeauticianIds, setUnavailableBeauticianIds] = useState(new Set());
     const [busyDays, setBusyDays] = useState({}); // { 'yyyy-MM-dd': true }
+    const [bookingNote, setBookingNote] = useState('');
+    const [showNoteModal, setShowNoteModal] = useState(false);
 
     // Fetch booking settings
     useEffect(() => {
@@ -95,6 +97,7 @@ function SelectDateTimeContent() {
                     setUseBeautician(!!data.useBeautician);
                     setWeeklySchedule(data.weeklySchedule || {});
                     setHolidayDates(Array.isArray(data.holidayDates) ? data.holidayDates : []);
+                    setBookingNote(data.bookingNote || '');
                 }
             } catch (e) {
                 console.error("Error fetching booking settings:", e);
@@ -370,7 +373,18 @@ function SelectDateTimeContent() {
 
                 {/* Available Time */}
                 <div className="w-full max-w-md mx-auto mt-6">
-                    <h2 className="text-base font-bold mb-2 text-primary">เลือกช่วงเวลา</h2>
+                    <div className="flex items-center gap-2 mb-2">
+                        <h2 className="text-base font-bold text-primary">เลือกช่วงเวลา</h2>
+                        {bookingNote && (
+                            <button
+                                onClick={() => setShowNoteModal(true)}
+                                className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold hover:bg-blue-600 transition-colors"
+                                title="ดูข้อความแจ้งเตือน"
+                            >
+                                !
+                            </button>
+                        )}
+                    </div>
 
                     {date && !isDateOpen(date) ? (
                         <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -456,6 +470,26 @@ function SelectDateTimeContent() {
                         ถัดไป
                     </button>
                 </div>
+
+                {/* Note Modal */}
+                {showNoteModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowNoteModal(false)}>
+                        <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-primary">ข้อความแจ้งเตือน</h3>
+                                <button onClick={() => setShowNoteModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                            </div>
+                            <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+                                {bookingNote}
+                            </div>
+                            <div className="mt-6">
+                                <button onClick={() => setShowNoteModal(false)} className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors">
+                                    เข้าใจแล้ว
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

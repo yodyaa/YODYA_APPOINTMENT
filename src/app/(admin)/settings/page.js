@@ -83,6 +83,7 @@ export default function AdminSettingsPage() {
         timeQueues: [],
         weeklySchedule: {},
         holidayDates: [],
+        bookingNote: '',
         _queueTime: '',
         _queueCount: '',
         _newHolidayDate: ''
@@ -369,6 +370,18 @@ export default function AdminSettingsPage() {
                     </SettingsCard>
                     
                     <SettingsCard title="โหมดและคิวการจอง">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">ข้อความแจ้งเตือนลูกค้า (แสดงที่หน้าเลือกเวลา)</label>
+                            <textarea 
+                                value={bookingSettings.bookingNote || ''} 
+                                onChange={e => setBookingSettings(prev => ({...prev, bookingNote: e.target.value}))} 
+                                rows="3" 
+                                className="border rounded-md px-2 py-1 w-full text-sm"
+                                placeholder="เช่น: โปรดมาให้ตรงเวลา หรือ แจ้งล่วงหน้าหากต้องการยกเลิก"
+                            ></textarea>
+                            <p className="text-xs text-gray-500 mt-1">ข้อความนี้จะแสดงเป็นปุ่ม [!] ที่หน้าเลือกเวลาจอง</p>
+                        </div>
+                        <hr className="my-2" />
                         <Toggle 
                             label="โหมดเลือกช่าง" 
                             checked={bookingSettings.useBeautician}

@@ -22,7 +22,7 @@ export default function AdminCustomersPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
-    email: ''
+    address: ''
   });
   const [formLoading, setFormLoading] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
@@ -65,7 +65,7 @@ export default function AdminCustomersPage() {
     if (result.success) {
       showToast(result.message, 'success');
       setShowAddForm(false);
-  setFormData({ fullName: '', phone: '', email: '' });
+  setFormData({ fullName: '', phone: '', address: '' });
       fetchCustomers();
     } else {
       showToast(result.error, 'error');
@@ -98,7 +98,7 @@ export default function AdminCustomersPage() {
       !q ||
       (c.fullName && c.fullName.toLowerCase().includes(q)) ||
       (c.phone && c.phone.includes(q)) ||
-      (c.email && c.email.toLowerCase().includes(q))
+      (c.address && c.address.toLowerCase().includes(q))
     );
   });
 
@@ -130,9 +130,8 @@ export default function AdminCustomersPage() {
               <input name="fullName" value={formData.fullName} onChange={handleFormChange} placeholder="ชื่อ-นามสกุล" required className="p-2 border rounded-md" />
               <input name="phone" value={formData.phone} onChange={handleFormChange} placeholder="เบอร์โทรศัพท์" required className="p-2 border rounded-md" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="email" name="email" value={formData.email} onChange={handleFormChange} placeholder="อีเมล" className="p-2 border rounded-md" />
-              {/* Removed points field */}
+            <div>
+              <textarea name="address" value={formData.address} onChange={handleFormChange} placeholder="ที่อยู่" rows="2" className="p-2 border rounded-md w-full" />
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2 bg-gray-200 rounded-md">ยกเลิก</button>
@@ -147,7 +146,7 @@ export default function AdminCustomersPage() {
       <div className="mb-4">
         <input
           className="border rounded px-3 py-2 w-full md:w-80"
-          placeholder="ค้นหาชื่อ, เบอร์, อีเมล"
+          placeholder="ค้นหาชื่อ, เบอร์, ที่อยู่"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -163,7 +162,7 @@ export default function AdminCustomersPage() {
               <tr className="bg-gray-100 text-gray-700">
                 <th className="py-2 px-4 text-left">ชื่อ</th>
                 <th className="py-2 px-4 text-left">เบอร์โทร</th>
-                <th className="py-2 px-4 text-left">อีเมล</th>
+                <th className="py-2 px-4 text-left">ที่อยู่</th>
                 <th className="py-2 px-4 text-left">สะสมแต้ม</th>
                 <th className="py-2 px-4 text-left">เครดิต</th>
                 <th className="py-2 px-4 text-left">LINE</th>
@@ -176,7 +175,7 @@ export default function AdminCustomersPage() {
                 <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="py-2 px-4">{c.fullName || '-'}</td>
                   <td className="py-2 px-4">{c.phone || '-'}</td>
-                  <td className="py-2 px-4">{c.email || '-'}</td>
+                  <td className="py-2 px-4">{c.address || '-'}</td>
                   <td className="py-2 px-4">
                     <span className="text-green-600 font-semibold">
                       {(c.points || c.totalPoints || 0) > 0 ? `${c.points || c.totalPoints || 0} แต้ม` : 'ไม่มีแต้ม'}

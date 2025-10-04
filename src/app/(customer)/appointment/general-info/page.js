@@ -26,7 +26,7 @@ function GeneralInfoContent() {
     const time = searchParams.get('time');
     const beauticianId = searchParams.get('beauticianId');
 
-    const [formData, setFormData] = useState({ fullName: "", phone: "", email: "", note: "" });
+    const [formData, setFormData] = useState({ fullName: "", phone: "", address: "", note: "" });
     const [service, setService] = useState(null);
     const [beautician, setBeautician] = useState(null);
     const [availableCoupons, setAvailableCoupons] = useState([]);
@@ -56,7 +56,7 @@ function GeneralInfoContent() {
 
                 if (customerSnap.exists()) {
                     const data = customerSnap.data();
-                    setFormData(prev => ({ ...prev, fullName: data.fullName || profile.displayName || "", phone: data.phone || "", email: data.email || "" }));
+                    setFormData(prev => ({ ...prev, fullName: data.fullName || profile.displayName || "", phone: data.phone || "", address: data.address || "" }));
                 } else {
                     setFormData(prev => ({ ...prev, fullName: profile.displayName || "" }));
                 }
@@ -102,8 +102,8 @@ function GeneralInfoContent() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.fullName || !formData.phone) {
-            showToast("กรุณากรอกชื่อ-นามสกุล และเบอร์โทรศัพท์", "warning", "ข้อมูลไม่ครบถ้วน");
+        if (!formData.fullName || !formData.phone || !formData.address) {
+            showToast("กรุณากรอกชื่อ-นามสกุล, เบอร์โทรศัพท์ และที่อยู่", "warning", "ข้อมูลไม่ครบถ้วน");
             return;
         }
         if (liffLoading || !profile?.userId) {
@@ -294,14 +294,14 @@ function GeneralInfoContent() {
                         </div>
 
                         <div className='flex items-center'>
-                            <label className="w-24 block text-sm font-medium text-gray-700">อีเมล</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
+                            <label className="w-24 block text-sm font-medium text-gray-700">ที่อยู่</label>
+                            <textarea
+                                name="address"
+                                value={formData.address}
                                 onChange={handleChange}
+                                rows={2}
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent placeholder-gray-500"
-
+                                required
                             />
                         </div>
 

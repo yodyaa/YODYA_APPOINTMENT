@@ -161,12 +161,12 @@ export default function EditCustomerPage() {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">อีเมล</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">ที่อยู่ (จากการจอง)</label>
+                <textarea
+                  name="address"
+                  value={formData.address}
                   onChange={handleChange}
+                  rows="2"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>

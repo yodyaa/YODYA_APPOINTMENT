@@ -1,7 +1,8 @@
+
 "use client";
 import { useState, useEffect } from "react";
 import { db } from "@/app/lib/firebase";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
 import { useRouter } from "next/navigation";
@@ -19,54 +20,37 @@ export default function MonthlyDashboardPage() {
     busyDays: 0
   });
 
-  const fetchMonthlyData = async () => {
+  // --- realtime monthly data ---
+  // Firestore v9 modular realtime listener
+  const fetchAndListenMonthlyData = () => {
     setLoading(true);
-    try {
-      const monthStart = startOfMonth(parseISO(selectedMonth + '-01'));
-      const monthEnd = endOfMonth(monthStart);
-      
-      // ดึงข้อมูล workorders ทั้งเดือน
-      const workordersQuery = query(
-        collection(db, "workorders"),
-        where("date", ">=", format(monthStart, 'yyyy-MM-dd')),
-        where("date", "<=", format(monthEnd, 'yyyy-MM-dd')),
-        orderBy("date", "asc")
-      );
-      
-      const workordersSnapshot = await getDocs(workordersQuery);
-      const workorders = workordersSnapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      }));
-
-      // ดึงข้อมูล busy status
-      const dayBookingQuery = query(collection(db, "dayBookingStatus"));
-      const dayBookingSnapshot = await getDocs(dayBookingQuery);
-      const busyStatus = {};
-      dayBookingSnapshot.docs.forEach(doc => {
-        busyStatus[doc.id] = doc.data();
-      });
-
-      // สร้างข้อมูลรายวัน
+    const monthStart = startOfMonth(parseISO(selectedMonth + '-01'));
+    const monthEnd = endOfMonth(monthStart);
+    const workordersQuery = query(
+      collection(db, "workorders"),
+      where("date", ">=", format(monthStart, 'yyyy-MM-dd')),
+      where("date", "<=", format(monthEnd, 'yyyy-MM-dd')),
+      orderBy("date", "asc")
+    );
+    const dayBookingQuery = query(collection(db, "dayBookingStatus"));
+    let workorders = [];
+    let busyStatus = {};
+    const recalc = () => {
       const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
       const dailyData = daysInMonth.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const dayWorkorders = workorders.filter(w => w.date === dateStr);
         const dayBusyInfo = busyStatus[dateStr] || {};
-        
         const dayRevenue = dayWorkorders.reduce((sum, w) => {
           const price = parseFloat(w.price) || 0;
           return sum + price;
         }, 0);
-
         const uniqueCustomers = new Set(dayWorkorders.map(w => w.name)).size;
-        
         const statusCounts = {
           'ใหม่': dayWorkorders.filter(w => w.processStatus === 'ใหม่').length,
           'กำลังดำเนินการ': dayWorkorders.filter(w => w.processStatus === 'กำลังดำเนินการ').length,
           'เสร็จสิ้น': dayWorkorders.filter(w => w.processStatus === 'เสร็จสิ้น').length
         };
-
         return {
           date: dateStr,
           dayName: format(day, 'EEE', { locale: th }),
@@ -79,16 +63,13 @@ export default function MonthlyDashboardPage() {
           workorders: dayWorkorders
         };
       });
-
       setMonthlyData(dailyData);
-
-      // คำนวณสรุปข้อมูล
+      // summary
       const totalRevenue = dailyData.reduce((sum, day) => sum + day.revenue, 0);
       const totalWorkorders = dailyData.reduce((sum, day) => sum + day.workordersCount, 0);
       const totalCustomers = dailyData.reduce((sum, day) => sum + day.customers, 0);
       const busyDays = dailyData.filter(day => day.isBusy).length;
       const workingDays = dailyData.filter(day => day.workordersCount > 0).length;
-
       setSummary({
         totalRevenue,
         totalWorkorders,
@@ -96,17 +77,34 @@ export default function MonthlyDashboardPage() {
         averageDaily: workingDays > 0 ? totalRevenue / workingDays : 0,
         busyDays
       });
-
-    } catch (error) {
-      console.error("Error fetching monthly data:", error);
-      setMonthlyData([]);
-    } finally {
       setLoading(false);
-    }
+    };
+    // subscribe workorders
+    const unsubWorkorders = onSnapshot(workordersQuery, (snapshot) => {
+      workorders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      recalc();
+    });
+    // subscribe dayBookingStatus
+    const unsubDayBooking = onSnapshot(dayBookingQuery, (snapshot) => {
+      busyStatus = {};
+      snapshot.docs.forEach(doc => {
+        busyStatus[doc.id] = doc.data();
+      });
+      recalc();
+    });
+    // cleanup
+    return () => {
+      if (unsubWorkorders) unsubWorkorders();
+      if (unsubDayBooking) unsubDayBooking();
+    };
   };
 
   useEffect(() => {
-    fetchMonthlyData();
+    // realtime listener
+    const cleanup = fetchAndListenMonthlyData();
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [selectedMonth]);
 
   const getStatusColor = (status) => {
@@ -131,13 +129,7 @@ export default function MonthlyDashboardPage() {
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="p-2 border rounded-md"
           />
-          <button
-            onClick={fetchMonthlyData}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-          >
-            {loading ? 'กำลังโหลด...' : 'รีเฟรช'}
-          </button>
+          {/* ปุ่มรีเฟรช realtime ไม่จำเป็นแล้ว */}
         </div>
       </div>
 
