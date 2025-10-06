@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { db } from "@/app/lib/firebase";
-import { collection, getDocs, query, where, addDoc, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { sendWorkorderConfirmedFlex } from '@/app/actions/workorderActions';
 import { sendBookingNotification } from '@/app/actions/lineActions';
 import { useRouter } from "next/navigation";
 import { useToast } from '@/app/components/Toast';
 import { format, startOfDay, endOfDay, parseISO } from "date-fns";
+import { ConfirmationModal } from '@/app/components/common/NotificationComponent';
 
 const STATUSES = {
   awaiting_confirmation: { label: 'รอยืนยัน', color: 'bg-yellow-100 text-yellow-800' },
@@ -60,6 +61,9 @@ export default function CreateWorkorderPage() {
   const [bookingCustomers, setBookingCustomers] = useState({});
   const [allCustomers, setAllCustomers] = useState([]);
   const [createdWorkorders, setCreatedWorkorders] = useState({});
+  const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [bookingToDelete, setBookingToDelete] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // ฟิลเตอร์
   const getMonthRange = () => {
@@ -290,6 +294,74 @@ export default function CreateWorkorderPage() {
     }
   };
 
+  const handleCancelBooking = async (booking) => {
+    setIsProcessing(true);
+    try {
+      const appointmentRef = doc(db, "appointments", booking.id);
+      await updateDoc(appointmentRef, { 
+        status: "cancelled",
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: 'admin'
+      });
+      
+      // อัพเดท state
+      setAllBookings(prev => prev.map(bk => 
+        bk.id === booking.id ? { ...bk, status: "cancelled" } : bk
+      ));
+      
+      showToast("ยกเลิกการจองสำเร็จ", "success");
+      
+      // แจ้งเตือนลูกค้า (ถ้ามี LINE ID)
+      const customer = bookingCustomers[booking.id];
+      const lineId = booking.lineUserId || customer?.userId || "";
+      if (lineId) {
+        try {
+          await sendBookingNotification({
+            customerName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
+            serviceName: booking.serviceInfo?.name || booking.serviceName || 'บริการ',
+            appointmentDate: booking.date || '',
+            appointmentTime: booking.time || '',
+          }, 'cancelled');
+          console.log('[CANCEL] แจ้งเตือนลูกค้าสำเร็จ');
+        } catch (notifyErr) {
+          console.error('[CANCEL] แจ้งเตือนลูกค้า ERROR', notifyErr);
+        }
+      }
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+      showToast("เกิดข้อผิดพลาดในการยกเลิกการจอง", "error");
+    } finally {
+      setIsProcessing(false);
+      setBookingToCancel(null);
+    }
+  };
+
+  const handleDeleteBooking = async (booking) => {
+    setIsProcessing(true);
+    try {
+      // ตรวจสอบว่ามีงานที่สร้างจากการจองนี้หรือไม่
+      if (createdWorkorders[booking.id]) {
+        showToast("ไม่สามารถลบได้เนื่องจากมีงานที่สร้างจากการจองนี้แล้ว", "error");
+        setIsProcessing(false);
+        setBookingToDelete(null);
+        return;
+      }
+      
+      await deleteDoc(doc(db, "appointments", booking.id));
+      
+      // อัพเดท state
+      setAllBookings(prev => prev.filter(bk => bk.id !== booking.id));
+      
+      showToast("ลบการจองสำเร็จ", "success");
+    } catch (err) {
+      console.error('Error deleting booking:', err);
+      showToast("เกิดข้อผิดพลาดในการลบการจอง", "error");
+    } finally {
+      setIsProcessing(false);
+      setBookingToDelete(null);
+    }
+  };
+
   const handleCreateWorkorderFromBooking = async (booking, gardenerId, caseNumber, date, time, price) => {
     console.log('[DEBUG] เริ่มสร้างงานจากนัดหมาย:', { bookingId: booking.id, gardenerId, caseNumber });
     try {
@@ -401,6 +473,28 @@ export default function CreateWorkorderPage() {
   };
 
   return (
+    <>
+      {/* Modal ยืนยันการยกเลิกการจอง */}
+      <ConfirmationModal
+        show={!!bookingToCancel}
+        title="ยืนยันการยกเลิกการจอง"
+        message={`คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองของ "${bookingToCancel?.customerInfo?.fullName || bookingToCancel?.fullName || 'ลูกค้า'}"?`}
+        onConfirm={() => handleCancelBooking(bookingToCancel)}
+        onCancel={() => setBookingToCancel(null)}
+        isProcessing={isProcessing}
+      />
+      
+      {/* Modal ยืนยันการลบการจอง */}
+      <ConfirmationModal
+        show={!!bookingToDelete}
+        title="ยืนยันการลบการจอง"
+        message={`คุณแน่ใจหรือไม่ว่าต้องการลบการจองของ "${bookingToDelete?.customerInfo?.fullName || bookingToDelete?.fullName || 'ลูกค้า'}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้!`}
+        onConfirm={() => handleDeleteBooking(bookingToDelete)}
+        onCancel={() => setBookingToDelete(null)}
+        isProcessing={isProcessing}
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
+      
     <div className="container mx-auto p-4 md:p-8">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">สร้างงานใหม่</h1>
       {/* ฟิลเตอร์เหมือน dashboard */}
@@ -433,25 +527,43 @@ export default function CreateWorkorderPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBookings.map((b, idx) => (
               <div key={b.id ? b.id + '-' + idx : idx} className="bg-white border border-indigo-100 rounded-lg p-4">
-                <div className="flex gap-2 items-center mb-2">
+                <div className="flex flex-wrap gap-2 items-center mb-2">
                   <span className={`px-2 py-0.5 text-xs font-semibold rounded ${STATUSES[b.status]?.color || 'bg-gray-100 text-gray-800'}`}>{STATUSES[b.status]?.label || b.status || 'ไม่ระบุสถานะ'}</span>
                   {createdWorkorders[b.id] && (
                     <span title="สร้างงานแล้ว" className="inline-block text-green-600 text-xl align-middle">✓</span>
                   )}
-                  <button
-                    className="bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700 text-sm font-semibold"
-                    onClick={() => setShowAssignFormId(b.id)}
-                  >
-                    สร้างงานจากนัดหมายนี้
-                  </button>
+                  {b.status !== 'cancelled' && !createdWorkorders[b.id] && (
+                    <button
+                      className="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-xs font-semibold"
+                      onClick={() => setShowAssignFormId(b.id)}
+                    >
+                      สร้างงาน
+                    </button>
+                  )}
                   {bookingCustomers[b.id] && (
                     <button
-                      className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600 text-sm font-semibold"
+                      className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-xs font-semibold"
                       onClick={() => {
                         window.location.href = `/customers/edit/${bookingCustomers[b.id].id}`;
                       }}
                     >
-                      แก้ไขข้อมูลลูกค้า
+                      แก้ไขลูกค้า
+                    </button>
+                  )}
+                  {b.status !== 'cancelled' && !createdWorkorders[b.id] && (
+                    <button
+                      className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-xs font-semibold"
+                      onClick={() => setBookingToCancel(b)}
+                    >
+                      ยกเลิกการจอง
+                    </button>
+                  )}
+                  {!createdWorkorders[b.id] && (
+                    <button
+                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-xs font-semibold"
+                      onClick={() => setBookingToDelete(b)}
+                    >
+                      ลบ
                     </button>
                   )}
                 </div>
@@ -618,5 +730,6 @@ export default function CreateWorkorderPage() {
         <div className="mb-8 text-center text-gray-400">ไม่พบรายการนัดหมายในช่วงวันที่ที่เลือก</div>
       )}
     </div>
+    </>
   );
 }

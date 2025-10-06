@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { useLiffContext } from '@/context/LiffProvider';
 import HistoryCard from './HistoryCard'; // Import the new component
 import CustomerHeader from '@/app/components/CustomerHeader';
@@ -21,27 +21,31 @@ export default function BookingHistoryPage() {
             return;
         }
 
-        const fetchHistory = async () => {
-            setLoading(true);
-            try {
-                // Fetch completed or cancelled bookings
-                const bookingsQuery = query(
-                    collection(db, 'appointments'),
-                    where("userId", "==", profile.userId),
-                    where("status", "in", ["completed", "cancelled"]),
-                    orderBy("appointmentInfo.dateTime", "desc")
-                );
-                const querySnapshot = await getDocs(bookingsQuery);
+        setLoading(true);
+        
+        // ใช้ onSnapshot เพื่อ realtime updates
+        const bookingsQuery = query(
+            collection(db, 'appointments'),
+            where("userId", "==", profile.userId),
+            where("status", "in", ["completed", "cancelled"]),
+            orderBy("appointmentInfo.dateTime", "desc")
+        );
+        
+        const unsubscribe = onSnapshot(
+            bookingsQuery,
+            (querySnapshot) => {
                 const bookingsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setHistoryBookings(bookingsData);
-            } catch (error) {
+                setLoading(false);
+            },
+            (error) => {
                 console.error("Error fetching booking history:", error);
-            } finally {
                 setLoading(false);
             }
-        };
+        );
 
-        fetchHistory();
+        // Cleanup listener เมื่อ component unmount
+        return () => unsubscribe();
     }, [profile, liffLoading]);
 
     const handleBookAgain = () => {

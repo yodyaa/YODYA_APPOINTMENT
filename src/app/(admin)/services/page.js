@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/app/lib/firebase';
-import { collection, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -95,22 +95,28 @@ export default function ServicesListPage() {
   };
 
   useEffect(() => {
-    const fetchServices = async () => {
-      setLoading(true);
-      try {
-        const servicesQuery = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(servicesQuery);
+    setLoading(true);
+    const servicesQuery = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
+    
+    // ใช้ onSnapshot เพื่อ realtime updates
+    const unsubscribe = onSnapshot(
+      servicesQuery,
+      (querySnapshot) => {
+        console.log('Services list updated:', querySnapshot.docs.length);
         const servicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setAllServices(servicesData);
         setFilteredServices(servicesData);
-      } catch (err) {
-        console.error("Error fetching services: ", err);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching services: ", error);
         showToast("ไม่สามารถโหลดข้อมูลบริการได้", "error");
-      } finally {
         setLoading(false);
       }
-    };
-    fetchServices();
+    );
+
+    // Cleanup listener เมื่อ component unmount
+    return () => unsubscribe();
   }, []);
 
   if (loading || profileLoading) return <div className="text-center mt-20">กำลังโหลดข้อมูลบริการ...</div>;

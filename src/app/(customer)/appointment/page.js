@@ -66,12 +66,12 @@ export default function AppointmentPage() {
         <div>
             <CustomerHeader showBackButton={true} showActionButtons={false} />
             <div className="p-4">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                     {services.map(service => (
                         <div
                             key={service.id}
                             onClick={() => handleSelectService(service)}
-                            className="rounded-lg overflow-hidden shadow-lg cursor-pointer bg-white hover:shadow-xl transition-all border border-gray-200"
+                            className="rounded-xl overflow-hidden shadow-md cursor-pointer bg-white hover:shadow-xl transition-all border border-gray-200"
                         >
                             <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
                                 <Image
@@ -81,10 +81,10 @@ export default function AppointmentPage() {
                                     className="object-cover w-full h-full"
                                     priority
                                 />
-                                <div className="absolute bottom-0 left-0 w-full px-4 py-4 bg-gradient-to-t from-black/70 to-transparent">
-                                    <div className="text-white font-bold text-xl drop-shadow text-center">
-                                        {service.serviceName}
-                                    </div>
+                            </div>
+                            <div className="px-3 py-3 bg-white">
+                                <div className="text-gray-800 font-semibold text-sm text-center leading-tight">
+                                    {service.serviceName}
                                 </div>
                             </div>
                         </div>

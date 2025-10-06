@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/lib/firebase';
-import { collection, getDocs, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useToast } from '@/app/components/Toast';
 import { createAppointmentWithSlotCheck } from '@/app/actions/appointmentActions';
@@ -22,6 +22,7 @@ export default function CreateAppointmentPage() {
     const [customerInfo, setCustomerInfo] = useState({
         fullName: '',
         phone: '',
+        address: '',
         note: '',
         lineUserId: ''
     });
@@ -90,15 +91,6 @@ export default function CreateAppointmentPage() {
                     getDoc(doc(db, 'settings', 'booking'))
                 ]);
 
-                // โหลดข้อมูล services เฉพาะที่เปิดให้บริการ (status: 'available')
-                const servicesQuery = query(
-                    collection(db, 'services'),
-                    where('status', '==', 'available'),
-                    orderBy('serviceName')
-                );
-                const servicesSnapshot = await getDocs(servicesQuery);
-                setServices(servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
                 // โหลดการตั้งค่าการจอง
                 if (bookingSettingsDoc.exists()) {
                     const settings = bookingSettingsDoc.data();
@@ -115,36 +107,78 @@ export default function CreateAppointmentPage() {
                     });
                 }
 
-                // โหลดข้อมูลช่าง
-                const beauticiansQuery = query(
-                    collection(db, 'beauticians'),
-                    where('status', '==', 'available'),
-                    orderBy('firstName')
-                );
-                const beauticiansSnapshot = await getDocs(beauticiansQuery);
-                setBeauticians(beauticiansSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
+                setLoading(false);
             } catch (error) {
                 console.error("Error fetching data:", error);
                 showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
-            } finally {
                 setLoading(false);
             }
         };
         fetchData();
+
+        // ติดตามการเปลี่ยนแปลงของ services แบบ realtime (แสดงทั้งหมด)
+        const servicesQuery = query(
+            collection(db, 'services'),
+            orderBy('serviceName')
+        );
+        const unsubscribeServices = onSnapshot(
+            servicesQuery, 
+            (snapshot) => {
+                console.log('Services updated:', snapshot.docs.length);
+                const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setServices(allServices);
+            },
+            (error) => {
+                console.error('Services onSnapshot error:', error);
+                // Fallback: โหลดแบบปกติถ้า onSnapshot ไม่ทำงาน
+                getDocs(servicesQuery).then(snapshot => {
+                    console.log('Services fallback loaded:', snapshot.docs.length);
+                    setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                }).catch(err => console.error('Services fallback error:', err));
+            }
+        );
+
+        // ติดตามการเปลี่ยนแปลงของ beauticians แบบ realtime
+        const beauticiansQuery = query(
+            collection(db, 'beauticians'),
+            where('status', '==', 'available'),
+            orderBy('firstName')
+        );
+        const unsubscribeBeauticians = onSnapshot(
+            beauticiansQuery,
+            (snapshot) => {
+                console.log('Beauticians updated:', snapshot.docs.length);
+                setBeauticians(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            },
+            (error) => {
+                console.error('Beauticians onSnapshot error:', error);
+                // Fallback: โหลดแบบปกติถ้า onSnapshot ไม่ทำงาน
+                getDocs(beauticiansQuery).then(snapshot => {
+                    console.log('Beauticians fallback loaded:', snapshot.docs.length);
+                    setBeauticians(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                }).catch(err => console.error('Beauticians fallback error:', err));
+            }
+        );
+
+        // Cleanup listeners เมื่อ component unmount
+        return () => {
+            unsubscribeServices();
+            unsubscribeBeauticians();
+        };
     }, []); // โหลดข้อมูลเฉพาะตอน mount
 
     useEffect(() => {
         if (!appointmentDate) return;
 
-        const fetchAppointmentsForDate = async () => {
-            const dateStr = format(new Date(appointmentDate), 'yyyy-MM-dd');
-            const q = query(
-                collection(db, 'appointments'),
-                where('date', '==', dateStr),
-                where('status', 'in', ['pending', 'confirmed', 'awaiting_confirmation'])
-            );
-            const querySnapshot = await getDocs(q);
+        const dateStr = format(new Date(appointmentDate), 'yyyy-MM-dd');
+        const q = query(
+            collection(db, 'appointments'),
+            where('date', '==', dateStr),
+            where('status', 'in', ['pending', 'confirmed', 'awaiting_confirmation'])
+        );
+
+        // ใช้ onSnapshot เพื่อ realtime updates
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const appointmentsForDay = querySnapshot.docs.map(doc => doc.data());
 
             // คำนวณจำนวนการจองในแต่ละช่วงเวลา
@@ -173,13 +207,13 @@ export default function CreateAppointmentPage() {
             } else {
                 setUnavailableBeauticianIds(new Set());
             }
-        };
-
-        fetchAppointmentsForDate();
+        });
 
         // ดึงสถานะ busy ของวันจาก busyDays
-        const dateStr = format(new Date(appointmentDate), 'yyyy-MM-dd');
         setIsDayBusy(busyDays[dateStr] ?? false);
+
+        // Cleanup listener เมื่อ component unmount หรือ appointmentDate เปลี่ยน
+        return () => unsubscribe();
     }, [appointmentDate, appointmentTime, selectedBeauticianId, showToast, busyDays]);
 
     // โหลด busy status ของทุกวันในเดือนที่แสดง
@@ -238,7 +272,12 @@ export default function CreateAppointmentPage() {
             if (lineUserId) {
                 const customerDoc = await getDoc(doc(db, 'customers', lineUserId));
                 if (customerDoc.exists()) {
-                    setExistingCustomer({ id: customerDoc.id, ...customerDoc.data() });
+                    const customer = { id: customerDoc.id, ...customerDoc.data() };
+                    setExistingCustomer(customer);
+                    // เติมข้อมูลที่อยู่อัตโนมัติถ้ามี
+                    if (customer.address && !customerInfo.address) {
+                        setCustomerInfo(prev => ({ ...prev, address: customer.address }));
+                    }
                     setIsCheckingCustomer(false);
                     return;
                 }
@@ -250,7 +289,12 @@ export default function CreateAppointmentPage() {
 
                 if (!snapshot.empty) {
                     const customerData = snapshot.docs[0];
-                    setExistingCustomer({ id: customerData.id, ...customerData.data() });
+                    const customer = { id: customerData.id, ...customerData.data() };
+                    setExistingCustomer(customer);
+                    // เติมข้อมูลที่อยู่อัตโนมัติถ้ามี
+                    if (customer.address && !customerInfo.address) {
+                        setCustomerInfo(prev => ({ ...prev, address: customer.address }));
+                    }
                 } else {
                     setExistingCustomer(null);
                 }
@@ -414,8 +458,8 @@ export default function CreateAppointmentPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!selectedServiceId || (useBeautician && !selectedBeauticianId) || !appointmentDate || !appointmentTime || !customerInfo.fullName || !customerInfo.phone) {
-            showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'error');
+        if (!selectedServiceId || (useBeautician && !selectedBeauticianId) || !appointmentDate || !appointmentTime || !customerInfo.fullName || !customerInfo.phone || !customerInfo.address) {
+            showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (รวมถึงที่อยู่)', 'error');
             return;
         }
 
@@ -441,6 +485,7 @@ export default function CreateAppointmentPage() {
             const customerResult = await findOrCreateCustomer({
                 fullName: customerInfo.fullName,
                 phone: customerInfo.phone,
+                address: customerInfo.address,
                 note: customerInfo.note
             }, customerInfo.lineUserId || null);
 
@@ -465,6 +510,7 @@ export default function CreateAppointmentPage() {
                 customerInfo: {
                     fullName: customerInfo.fullName || '',
                     phone: customerInfo.phone || '',
+                    address: customerInfo.address || '',
                     note: customerInfo.note || '',
                     customerId: customerResult.customerId || '',
                     lineUserId: customerInfo.lineUserId || ''
@@ -556,11 +602,26 @@ export default function CreateAppointmentPage() {
                         >
                             <option value="">-- เลือกบริการ --</option>
                             {services.map(s => (
-                                <option key={s.id} value={s.id}>
-                                    {s.serviceName}
+                                <option 
+                                    key={s.id} 
+                                    value={s.id}
+                                    disabled={s.status === 'unavailable'}
+                                    style={{ 
+                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
+                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
+                                    }}
+                                >
+                                    {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
                                 </option>
                             ))}
                         </select>
+                        {services.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-2">
+                                ทั้งหมด {services.length} บริการ | 
+                                <span className="text-green-600"> เปิดให้บริการ {services.filter(s => s.status === 'available').length}</span> | 
+                                <span className="text-red-600"> งดให้บริการ {services.filter(s => s.status === 'unavailable' || !s.status).length}</span>
+                            </p>
+                        )}
                         {selectedService?.addOnServices?.length > 0 && (
                             <div className="mt-4">
                                 <h3 className="text-md font-medium mb-2">บริการเสริม:</h3>
@@ -827,6 +888,18 @@ export default function CreateAppointmentPage() {
                             />
                         </div>
                         <div className="mt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่ <span className="text-red-500">*</span></label>
+                            <textarea
+                                name="address"
+                                value={customerInfo.address}
+                                onChange={handleCustomerInfoChange}
+                                placeholder="ที่อยู่ลูกค้า (จำเป็นต้องระบุ)"
+                                rows="2"
+                                className="w-full p-2 border rounded-md"
+                                required
+                            />
+                        </div>
+                        <div className="mt-4">
                             <input
                                 type="text"
                                 name="lineUserId"
@@ -858,6 +931,9 @@ export default function CreateAppointmentPage() {
                                 <div className="text-xs text-green-700 space-y-1">
                                     <div>ชื่อ: {existingCustomer.fullName}</div>
                                     <div>เบอร์: {existingCustomer.phone}</div>
+                                    {existingCustomer.address && (
+                                        <div>ที่อยู่: {existingCustomer.address}</div>
+                                    )}
                                     {existingCustomer.totalPoints > 0 && (
                                         <div>แต้มสะสม: {existingCustomer.totalPoints} แต้ม</div>
                                     )}

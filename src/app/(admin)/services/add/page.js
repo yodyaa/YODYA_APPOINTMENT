@@ -120,11 +120,15 @@ export default function AddServicePage() {
       await addDoc(collection(db, "services"), {
         ...formData,
         imageUrl,
+        status: 'available', // ตั้งค่าเริ่มต้นให้เปิดให้บริการ
         addOnServices: (formData.addOnServices || []).map(a => ({ ...a })),
         createdAt: serverTimestamp(),
       });
       showToast("เพิ่มบริการใหม่สำเร็จ!", "success");
-      router.push('/services');
+      // หน่วงเวลาเล็กน้อยเพื่อให้ Firebase sync ข้อมูล
+      setTimeout(() => {
+        router.push('/services');
+      }, 500);
     } catch (error) {
       console.error("Error adding document: ", error);
       showToast("เกิดข้อผิดพลาด: " + error.message, "error");
