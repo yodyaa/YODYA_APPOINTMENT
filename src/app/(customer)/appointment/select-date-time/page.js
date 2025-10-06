@@ -372,17 +372,24 @@ function SelectDateTimeContent() {
                 </div>
 
                 {/* Available Time */}
-                <div className="w-full max-w-md mx-auto mt-6">
-                    <div className="flex items-center gap-2 mb-2">
+                <div className="w-full max-w-md mx-auto m-6">
+                    <div className="flex items-center justify-between gap-3 mb-6">
                         <h2 className="text-base font-bold text-primary">เลือกช่วงเวลา</h2>
+                        
+                        {/* Booking Note Alert */}
                         {bookingNote && (
-                            <button
-                                onClick={() => setShowNoteModal(true)}
-                                className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold hover:bg-blue-600 transition-colors"
-                                title="ดูข้อความแจ้งเตือน"
-                            >
-                                !
-                            </button>
+                            <div className="flex items-center gap-2 bg-red-50 border-l-4 border-red-500 rounded-lg px-3 py-2">
+                                <div className="flex-shrink-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold">!</span>
+                                </div>
+                                <p className="text-red-700 font-bold text-xs whitespace-nowrap">คำแนะนำก่อนจอง</p>
+                                <button
+                                    onClick={() => setShowNoteModal(true)}
+                                    className="text-red-600 font-semibold text-xs underline hover:text-red-700"
+                                >
+                                    อ่าน
+                                </button>
+                            </div>
                         )}
                     </div>
 

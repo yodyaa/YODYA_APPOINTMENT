@@ -48,6 +48,7 @@ export default function WorkorderAdminPage() {
   const [staffCount, setStaffCount] = useState(3); // จำนวนช่างเริ่มต้น
   const [dailyStaffSettings, setDailyStaffSettings] = useState({});
   const [productivityThreshold, setProductivityThreshold] = useState(1000); // Productivity ต่อช่างที่แอดมินกำหนด
+  const [dailyProductivitySettings, setDailyProductivitySettings] = useState({}); // จำ productivity แต่ละวัน
 
   // Sync selectedDate with ?date=... query string
   const searchParams = useSearchParams();
@@ -100,6 +101,14 @@ export default function WorkorderAdminPage() {
           dailySettingsData[doc.id] = doc.data().staffCount || 3;
         });
         setDailyStaffSettings(dailySettingsData);
+
+        // ดึงการตั้งค่า productivity รายวัน
+        const dailyProductivitySnapshot = await getDocs(collection(db, "dailyProductivitySettings"));
+        const dailyProductivityData = {};
+        dailyProductivitySnapshot.docs.forEach(doc => {
+          dailyProductivityData[doc.id] = doc.data().productivityThreshold || 1000;
+        });
+        setDailyProductivitySettings(dailyProductivityData);
 
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -285,6 +294,7 @@ export default function WorkorderAdminPage() {
   const calculateDayStats = async () => {
     const dayAppointments = appointments.filter(apt => apt.date === selectedDateStr);
     const currentStaffCount = dailyStaffSettings[selectedDateStr] || staffCount;
+    const currentProductivity = dailyProductivitySettings[selectedDateStr] || productivityThreshold;
     let totalRevenue = 0;
     let totalDuration = 0;
     
@@ -305,8 +315,8 @@ export default function WorkorderAdminPage() {
     });
     
     const avgProductivity = currentStaffCount > 0 ? totalRevenue / currentStaffCount : 0;
-    // ถ้า totalRevenue > productivityThreshold * currentStaffCount ให้ถือว่าไม่ว่าง
-    const isBusy = totalRevenue > (productivityThreshold * currentStaffCount);
+    // ถ้า totalRevenue > currentProductivity * currentStaffCount ให้ถือว่าไม่ว่าง
+    const isBusy = totalRevenue > (currentProductivity * currentStaffCount);
 
     // บันทึกสถานะ busy ลง Firestore
     try {
@@ -348,7 +358,7 @@ export default function WorkorderAdminPage() {
     };
     updateStats();
     // eslint-disable-next-line
-  }, [selectedDateStr, staffCount, dailyStaffSettings, productivityThreshold]);
+  }, [selectedDateStr, staffCount, dailyStaffSettings, productivityThreshold, dailyProductivitySettings]);
 
   // บันทึกการตั้งค่าจำนวนช่าง
   const handleStaffCountChange = async (newCount) => {
@@ -365,6 +375,24 @@ export default function WorkorderAdminPage() {
       }));
     } catch (error) {
       console.error("Error saving staff count:", error);
+    }
+  };
+
+  // บันทึกการตั้งค่า productivity ต่อช่าง
+  const handleProductivityChange = async (newProductivity) => {
+    setProductivityThreshold(newProductivity);
+    try {
+      await setDoc(doc(db, "dailyProductivitySettings", selectedDateStr), {
+        productivityThreshold: newProductivity,
+        date: selectedDateStr,
+        updatedAt: new Date()
+      });
+      setDailyProductivitySettings(prev => ({
+        ...prev,
+        [selectedDateStr]: newProductivity
+      }));
+    } catch (error) {
+      console.error("Error saving productivity threshold:", error);
     }
   };
 
@@ -422,8 +450,8 @@ export default function WorkorderAdminPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Productivity/ช่าง</label>
               <input
                 type="number"
-                value={productivityThreshold}
-                onChange={e => setProductivityThreshold(Number(e.target.value))}
+                value={dailyProductivitySettings[selectedDateStr] || productivityThreshold}
+                onChange={e => handleProductivityChange(Number(e.target.value))}
                 className="border rounded px-2 py-2 w-24 text-center"
                 min={0}
               />
