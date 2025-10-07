@@ -41,7 +41,6 @@ const navLinks = [
     name: "ตั้งค่า",
     items: [
       { name: "จัดการผู้ดูแลระบบ", href: "/admins" },
-      { name: "จัดการพนักงาน", href: "/employees" },
       { name: "ตั้งค่าทั่วไป", href: "/settings" },
     ]
   },
