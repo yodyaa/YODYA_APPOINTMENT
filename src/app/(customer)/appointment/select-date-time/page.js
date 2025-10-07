@@ -259,7 +259,7 @@ function SelectDateTimeContent() {
         <div>
             <ToastComponent />
             <CustomerHeader showBackButton={true} showActionButtons={false} />
-            <div className="min-h-screen flex flex-col items-center  p-4">
+            <div className="flex flex-col items-center  p-4">
                 {/* Calendar */}
                 <div className="w-full bg-white/30 border border-[#A8999E] p-4 rounded-2xl max-w-md mx-auto flex flex-col items-center">
                     <div className="flex items-center justify-between w-full mb-4">

@@ -91,10 +91,10 @@ export default function AppointmentPage() {
                                     <div
                                         key={service.id}
                                         onClick={() => handleSelectService(service)}
-                                        className="rounded-xl overflow-hidden shadow-md cursor-pointer bg-white hover:shadow-xl transition-all border-2 border-yellow-400 relative"
+                                        className="rounded-xl overflow-hidden shadow-md cursor-pointer bg-white hover:shadow-xl transition-all border  border-green-600 relative"
                                     >
                                         {/* Badge ยอดนิยม */}
-                                        <div className="absolute top-2 right-2 bg-yellow-400 text-white rounded-full px-2 py-1 text-xs font-bold shadow-lg z-10 flex items-center gap-1">
+                                        <div className="absolute top-2 right-2 bg-green-600 text-white rounded-full px-2 py-1 text-xs   shadow-lg z-10 flex items-center gap-1">
                                             🔥 <span>ยอดนิยม</span>
                                         </div>
                                         <div className="relative w-full" style={{ aspectRatio: '16/9' }}>

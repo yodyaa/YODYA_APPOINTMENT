@@ -67,7 +67,7 @@ export default function CustomerHeader({ showBackButton = false, showActionButto
                     title="กลับหน้าหลัก"
                 >
                     {shopLogo ? (
-                        <div className="w-10 h-10 relative">
+                        <div className="w-16 h-16 relative">
                             <Image 
                                 src={shopLogo} 
                                 alt="Shop Logo" 
@@ -77,7 +77,7 @@ export default function CustomerHeader({ showBackButton = false, showActionButto
                             />
                         </div>
                     ) : (
-                        <div className="w-10 h-10 bg-white/30 rounded-lg" />
+                        <div className="w-16 h-16 bg-white/30 rounded-lg" />
                     )}
                 </button>
             </header>
