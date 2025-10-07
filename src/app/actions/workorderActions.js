@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from '@/app/lib/firebaseAdmin';
-import { sendServiceCompletedFlexMessage, sendAppointmentConfirmedFlexMessage } from './lineFlexActions';
+import { sendServiceCompletedFlexMessage, sendAppointmentConfirmedFlexMessage, sendAppointmentCancelledFlexMessage } from './lineFlexActions';
 
 export async function updateWorkorderStatusByAdmin({ workorderId, field, value, adminName }) {
   try {
@@ -84,6 +84,25 @@ export async function sendWorkorderConfirmedFlex(userId, workorderData) {
     return result;
   } catch (error) {
     console.error('[sendWorkorderConfirmedFlex] ERROR:', error);
+    throw error;
+  }
+}
+
+/**
+ * ส่ง Flex Message สถานะ "ยกเลิก" ไปยัง LINE OA ของลูกค้า
+ * @param {string} userId - LINE User ID ของลูกค้า
+ * @param {object} appointmentData - ข้อมูลการจองที่ยกเลิก
+ * @param {string} reason - เหตุผลในการยกเลิก
+ */
+export async function sendAppointmentCancelledFlex(userId, appointmentData, reason = 'ยกเลิกโดยแอดมิน') {
+  try {
+    console.log('[sendAppointmentCancelledFlex] เริ่มส่ง Flex:', { userId, appointmentData, reason });
+    
+    const result = await sendAppointmentCancelledFlexMessage(userId, appointmentData, reason);
+    console.log('[sendAppointmentCancelledFlex] ส่ง Flex สำเร็จ');
+    return result;
+  } catch (error) {
+    console.error('[sendAppointmentCancelledFlex] ERROR:', error);
     throw error;
   }
 }

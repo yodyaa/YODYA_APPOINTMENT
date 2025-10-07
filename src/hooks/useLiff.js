@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 
 const MOCK_PROFILE = {
-    userId: 'U_TEST_1234567890ABCDEF',
+    userId: 'Uf7326eec01c9fd4fc8cf578c9ddf2178',
     displayName: 'User Test (Dev)',
     pictureUrl: 'https://lh5.googleusercontent.com/d/10mcLZP15XqebnVb1IaODQLhZ93EWT7h7'
 };

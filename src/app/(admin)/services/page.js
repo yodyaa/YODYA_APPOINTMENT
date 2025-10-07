@@ -49,15 +49,37 @@ const formatPrice = (v) => {
 export default function ServicesListPage() {
   const [allServices, setAllServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
-    const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+  const [favoriteUpdatingId, setFavoriteUpdatingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
   const { profile, loading: profileLoading } = useProfile();
 
-    // อัพเดทสถานะบริการ
-    const handleUpdateStatus = async (service) => {
+  // อัพเดทสถานะรายการโปรด
+  const handleToggleFavorite = async (service) => {
+    if (!service?.id) return;
+    const newFavorite = !service.isFavorite;
+    setFavoriteUpdatingId(service.id);
+    try {
+      await updateDoc(doc(db, 'services', service.id), { 
+        isFavorite: newFavorite,
+        updatedAt: new Date()
+      });
+      setAllServices(prev => prev.map(s => s.id === service.id ? { ...s, isFavorite: newFavorite } : s));
+      setFilteredServices(prev => prev.map(s => s.id === service.id ? { ...s, isFavorite: newFavorite } : s));
+      showToast(`${newFavorite ? 'เพิ่มเป็น' : 'ลบออกจาก'}รายการโปรดสำเร็จ!`, 'success');
+    } catch (err) {
+      console.error('Error updating favorite:', err);
+      showToast('เกิดข้อผิดพลาดในการอัพเดทรายการโปรด', 'error');
+    } finally {
+      setFavoriteUpdatingId(null);
+    }
+  };
+
+  // อัพเดทสถานะบริการ
+  const handleUpdateStatus = async (service) => {
       if (!service?.id) return;
       const newStatus = service.status === 'available' ? 'unavailable' : 'available';
       setStatusUpdatingId(service.id);
@@ -104,8 +126,21 @@ export default function ServicesListPage() {
       (querySnapshot) => {
         console.log('Services list updated:', querySnapshot.docs.length);
         const servicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllServices(servicesData);
-        setFilteredServices(servicesData);
+        
+        // เรียงลำดับ: รายการโปรดก่อน (isFavorite: true) แล้วตามด้วยวันที่สร้างใหม่สุด
+        const sortedServices = servicesData.sort((a, b) => {
+          // ถ้า a เป็นรายการโปรด แต่ b ไม่ใช่ ให้ a อยู่ข้างหน้า
+          if (a.isFavorite && !b.isFavorite) return -1;
+          // ถ้า b เป็นรายการโปรด แต่ a ไม่ใช่ ให้ b อยู่ข้างหน้า
+          if (!a.isFavorite && b.isFavorite) return 1;
+          // ถ้าทั้งคู่เป็นหรือไม่เป็นรายการโปรดเหมือนกัน ให้เรียงตามวันที่สร้าง (ใหม่ก่อน)
+          const dateA = safeDate(a.createdAt)?.getTime() || 0;
+          const dateB = safeDate(b.createdAt)?.getTime() || 0;
+          return dateB - dateA;
+        });
+        
+        setAllServices(sortedServices);
+        setFilteredServices(sortedServices);
         setLoading(false);
       },
       (error) => {
@@ -140,7 +175,15 @@ export default function ServicesListPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredServices.map(service => (
-              <div key={service.id} className="bg-white rounded-lg shadow-md p-4 flex flex-col justify-between">
+              <div key={service.id} className={`bg-white rounded-lg shadow-md p-4 flex flex-col justify-between relative ${service.isFavorite ? 'ring-2 ring-yellow-400' : ''}`}>
+                  {/* ไอคอนดาวรายการโปรด */}
+                  {service.isFavorite && (
+                    <div className="absolute top-2 right-2 bg-yellow-400 text-white rounded-full p-1.5 shadow-lg z-10">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
+                  )}
                   <div>
                       <div className="relative w-full h-40 mb-3">
                                   <Image src={service.imageUrl || '/placeholder.png'} alt={service.serviceName || service.name || 'service'} fill style={{ objectFit: 'cover' }} className="rounded-md" />
@@ -171,7 +214,21 @@ export default function ServicesListPage() {
                           )}
                       </div>
                   </div>
-                  <div className="border-t mt-4 pt-3 flex justify-between items-center gap-2">
+                  <div className="border-t mt-4 pt-3 space-y-2">
+                      {/* ปุ่มรายการโปรด */}
+                      <button
+                        className={`w-full text-sm px-3 py-2 rounded-md font-semibold border transition-colors ${
+                          service.isFavorite 
+                            ? 'bg-yellow-50 text-yellow-700 border-yellow-300 hover:bg-yellow-100' 
+                            : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'
+                        } ${favoriteUpdatingId === service.id ? 'opacity-60 pointer-events-none' : ''}`}
+                        onClick={() => handleToggleFavorite(service)}
+                        disabled={favoriteUpdatingId === service.id}
+                      >
+                        {service.isFavorite ? '⭐ ลบออกจากรายการโปรด' : '☆ เพิ่มเป็นรายการโปรด'}
+                      </button>
+                      
+                      {/* สถานะบริการ */}
                       <div className="flex gap-2 items-center">
                         <StatusButton status={service.status} />
                         <button
@@ -182,9 +239,11 @@ export default function ServicesListPage() {
                           {service.status === 'available' ? 'งดให้บริการ' : 'เปิดให้บริการ'}
                         </button>
                       </div>
+                      
+                      {/* ปุ่มแก้ไขและลบ */}
                       <div className="flex gap-2">
-                          <Link href={`/services/edit/${service.id}`} className="text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-3 rounded-md">แก้ไข</Link>
-                          <button onClick={() => handleDeleteService(service)} className="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-md">ลบ</button>
+                          <Link href={`/services/edit/${service.id}`} className="flex-1 text-center text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-3 rounded-md">แก้ไข</Link>
+                          <button onClick={() => handleDeleteService(service)} className="flex-1 text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-md">ลบ</button>
                       </div>
                   </div>
               </div>

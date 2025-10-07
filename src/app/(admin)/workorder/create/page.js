@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { db } from "@/app/lib/firebase";
 import { collection, getDocs, query, where, addDoc, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { sendWorkorderConfirmedFlex } from '@/app/actions/workorderActions';
+import { sendWorkorderConfirmedFlex, sendAppointmentCancelledFlex } from '@/app/actions/workorderActions';
 import { sendBookingNotification } from '@/app/actions/lineActions';
 import { useRouter } from "next/navigation";
 import { useToast } from '@/app/components/Toast';
@@ -10,11 +10,11 @@ import { format, startOfDay, endOfDay, parseISO } from "date-fns";
 import { ConfirmationModal } from '@/app/components/common/NotificationComponent';
 
 const STATUSES = {
-  awaiting_confirmation: { label: 'รอยืนยัน', color: 'bg-yellow-100 text-yellow-800' },
-  confirmed: { label: 'ยืนยันแล้ว', color: 'bg-blue-100 text-blue-800' },
-  in_progress: { label: 'กำลังใช้บริการ', color: 'bg-purple-100 text-purple-800' },
-  completed: { label: 'เสร็จสิ้น', color: 'bg-green-100 text-green-800' },
-  cancelled: { label: 'ยกเลิก', color: 'bg-red-100 text-red-800' },
+  awaiting_confirmation: { label: 'รอยืนยัน', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', cardColor: 'bg-yellow-50 border-yellow-200' },
+  confirmed: { label: 'ยืนยันแล้ว', color: 'bg-blue-50 text-blue-700 border-blue-200', cardColor: 'bg-blue-50 border-blue-200' },
+  in_progress: { label: 'กำลังใช้บริการ', color: 'bg-purple-50 text-purple-700 border-purple-200', cardColor: 'bg-purple-50 border-purple-200' },
+  completed: { label: 'เสร็จสิ้น', color: 'bg-green-50 text-green-700 border-green-200', cardColor: 'bg-green-50 border-green-200' },
+  cancelled: { label: 'ยกเลิก', color: 'bg-red-50 text-red-700 border-red-200', cardColor: 'bg-red-50 border-red-200' },
 };
 
 const STATUS_OPTIONS = [
@@ -192,6 +192,15 @@ export default function CreateWorkorderPage() {
     });
   }, [allBookings, filters]);
 
+  // สรุปจำนวนแต่ละสถานะ (ทั้งหมด ไม่สนใจการกรอง)
+  const statusSummary = useMemo(() => {
+    const summary = {};
+    Object.keys(STATUSES).forEach(key => {
+      summary[key] = allBookings.filter(b => b.status === key).length;
+    });
+    return summary;
+  }, [allBookings]);
+
   useEffect(() => {
     const fetchCustomers = async () => {
       setLoadingCustomers(true);
@@ -311,21 +320,38 @@ export default function CreateWorkorderPage() {
       
       showToast("ยกเลิกการจองสำเร็จ", "success");
       
-      // แจ้งเตือนลูกค้า (ถ้ามี LINE ID)
+      // ส่ง Flex Message แจ้งลูกค้าเมื่อยกเลิก
       const customer = bookingCustomers[booking.id];
-      const lineId = booking.lineUserId || customer?.userId || "";
-      if (lineId) {
+      // ดึง LINE User ID ที่ถูกต้อง (ต้องขึ้นต้นด้วย U)
+      const lineId = booking.lineUserId || booking.userId || customer?.lineUserId || customer?.userId || "";
+      
+      // ตรวจสอบว่าเป็น LINE User ID ที่ถูกต้องหรือไม่ (ต้องขึ้นต้นด้วย U)
+      const isValidLineId = lineId && lineId.startsWith('U');
+      
+      if (isValidLineId) {
         try {
-          await sendBookingNotification({
-            customerName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
-            serviceName: booking.serviceInfo?.name || booking.serviceName || 'บริการ',
-            appointmentDate: booking.date || '',
-            appointmentTime: booking.time || '',
-          }, 'cancelled');
-          console.log('[CANCEL] แจ้งเตือนลูกค้าสำเร็จ');
-        } catch (notifyErr) {
-          console.error('[CANCEL] แจ้งเตือนลูกค้า ERROR', notifyErr);
+          console.log('[CANCEL] ส่ง Flex ไปยัง LINE ID:', lineId);
+          // ส่ง Flex Message ยกเลิกการนัดหมาย (ผ่าน Server Action)
+          await sendAppointmentCancelledFlex(
+            lineId,
+            {
+              serviceName: booking.serviceInfo?.name || booking.serviceName || 'บริการ',
+              date: booking.date || '',
+              time: booking.time || '',
+              customerInfo: {
+                fullName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
+                phone: booking.phone || booking.customerInfo?.phone || customer?.phone || '',
+              },
+              id: booking.id,
+            },
+            'ยกเลิกโดยแอดมิน'
+          );
+          console.log('[CANCEL][Flex] ส่ง Flex ยกเลิกสำเร็จ');
+        } catch (flexErr) {
+          console.error('[CANCEL][Flex] ERROR', flexErr);
         }
+      } else {
+        console.log('[CANCEL] ไม่พบ LINE User ID ที่ถูกต้อง, ข้ามการส่ง Flex');
       }
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -405,8 +431,12 @@ export default function CreateWorkorderPage() {
         setAllBookings(prev => prev.map(bk => bk.id === booking.id ? { ...bk, status: "confirmed" } : bk));
       }
       // ส่ง Flex Message สถานะยืนยันแล้ว (ถ้ามี LINE ID)
-      const lineId = booking.lineUserId || customer?.userId || "";
-      if (lineId) {
+      const lineId = booking.lineUserId || booking.userId || customer?.lineUserId || customer?.userId || "";
+      // ตรวจสอบว่าเป็น LINE User ID ที่ถูกต้องหรือไม่ (ต้องขึ้นต้นด้วย U)
+      const isValidLineId = lineId && lineId.startsWith('U');
+      
+      if (isValidLineId) {
+        console.log('[CREATE] ส่ง Flex ไปยัง LINE ID:', lineId);
         // สร้าง payload ที่เป็น plain object และมีข้อมูลจากฟอร์มที่กรอก (เพราะอาจมีการเปลี่ยนแปลง)
         const flexPayload = {
           serviceName: serviceName,
@@ -439,6 +469,8 @@ export default function CreateWorkorderPage() {
         } catch (flexErr) {
           console.error('[CREATE][Flex] ERROR (จากนัดหมาย)', flexErr);
         }
+      } else {
+        console.log('[CREATE] ไม่พบ LINE User ID ที่ถูกต้อง, ข้ามการส่ง Flex');
       }
 
       // แจ้งเตือนแอดมินเมื่อสร้างงานจากนัดหมาย
@@ -520,15 +552,36 @@ export default function CreateWorkorderPage() {
           </select>
         </div>
       </div>
+
+      {/* สรุปจำนวนแต่ละสถานะ (ทั้งหมด) */}
+      <div className="mb-4 grid grid-cols-3 md:grid-cols-5 gap-2">
+        {Object.entries(STATUSES).map(([key, val]) => (
+          <button
+            key={key}
+            onClick={() => setFilters(prev => ({ ...prev, status: key }))}
+            className={`p-2 rounded-md border transition-all hover:shadow-md hover:scale-105 ${
+              filters.status === key 
+                ? `${val.cardColor} ring-2 ring-offset-1 ring-gray-400` 
+                : `${val.cardColor} opacity-80 hover:opacity-100`
+            }`}
+          >
+            <div className="text-xs font-medium text-gray-600">{val.label}</div>
+            <div className="text-lg font-bold text-gray-800">{statusSummary[key] || 0}</div>
+          </button>
+        ))}
+      </div>
+
       {/* แสดงรายการนัดหมายทุกสถานะที่ผ่านการกรอง */}
       {filteredBookings.length > 0 ? (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-indigo-700">รายการนัดหมาย</h2>
+          <h2 className="text-xl font-semibold mb-4 text-indigo-700">รายการนัดหมาย ({filteredBookings.length} รายการ)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredBookings.map((b, idx) => (
-              <div key={b.id ? b.id + '-' + idx : idx} className="bg-white border border-indigo-100 rounded-lg p-4">
+            {filteredBookings.map((b, idx) => {
+              const statusConfig = STATUSES[b.status] || { label: 'ไม่ระบุสถานะ', color: 'bg-gray-50 text-gray-700 border-gray-200', cardColor: 'bg-white border-gray-200' };
+              return (
+              <div key={b.id ? b.id + '-' + idx : idx} className={`border-2 rounded-lg p-4 shadow-sm ${statusConfig.cardColor}`}>
                 <div className="flex flex-wrap gap-2 items-center mb-2">
-                  <span className={`px-2 py-0.5 text-xs font-semibold rounded ${STATUSES[b.status]?.color || 'bg-gray-100 text-gray-800'}`}>{STATUSES[b.status]?.label || b.status || 'ไม่ระบุสถานะ'}</span>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusConfig.color}`}>{statusConfig.label}</span>
                   {createdWorkorders[b.id] && (
                     <span title="สร้างงานแล้ว" className="inline-block text-green-600 text-xl align-middle">✓</span>
                   )}
@@ -723,7 +776,8 @@ export default function CreateWorkorderPage() {
                 })()}
                 {/* ซ่อนข้อมูลลูกค้าที่ดึงมาจาก bookingCustomers */}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (

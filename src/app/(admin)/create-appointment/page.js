@@ -126,14 +126,32 @@ export default function CreateAppointmentPage() {
             (snapshot) => {
                 console.log('Services updated:', snapshot.docs.length);
                 const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setServices(allServices);
+                
+                // เรียงลำดับ: รายการโปรดก่อน (isFavorite: true) แล้วตามด้วยชื่อบริการ
+                const sortedServices = allServices.sort((a, b) => {
+                    // ถ้า a เป็นรายการโปรด แต่ b ไม่ใช่ ให้ a อยู่ข้างหน้า
+                    if (a.isFavorite && !b.isFavorite) return -1;
+                    // ถ้า b เป็นรายการโปรด แต่ a ไม่ใช่ ให้ b อยู่ข้างหน้า
+                    if (!a.isFavorite && b.isFavorite) return 1;
+                    // ถ้าทั้งคู่เป็นหรือไม่เป็นรายการโปรดเหมือนกัน ให้เรียงตามชื่อบริการ
+                    return (a.serviceName || '').localeCompare(b.serviceName || '', 'th');
+                });
+                
+                setServices(sortedServices);
             },
             (error) => {
                 console.error('Services onSnapshot error:', error);
                 // Fallback: โหลดแบบปกติถ้า onSnapshot ไม่ทำงาน
                 getDocs(servicesQuery).then(snapshot => {
                     console.log('Services fallback loaded:', snapshot.docs.length);
-                    setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // เรียงลำดับเหมือนกัน
+                    const sortedServices = allServices.sort((a, b) => {
+                        if (a.isFavorite && !b.isFavorite) return -1;
+                        if (!a.isFavorite && b.isFavorite) return 1;
+                        return (a.serviceName || '').localeCompare(b.serviceName || '', 'th');
+                    });
+                    setServices(sortedServices);
                 }).catch(err => console.error('Services fallback error:', err));
             }
         );
@@ -601,23 +619,61 @@ export default function CreateAppointmentPage() {
                             required
                         >
                             <option value="">-- เลือกบริการ --</option>
-                            {services.map(s => (
-                                <option 
-                                    key={s.id} 
-                                    value={s.id}
-                                    disabled={s.status === 'unavailable'}
-                                    style={{ 
-                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
-                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
-                                    }}
-                                >
-                                    {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
-                                </option>
-                            ))}
+                            
+                            {/* รายการโปรด */}
+                            {services.filter(s => s.isFavorite).length > 0 && (
+                                <>
+                                    <optgroup label="⭐ รายการโปรด">
+                                        {services
+                                            .filter(s => s.isFavorite)
+                                            .map(s => (
+                                                <option 
+                                                    key={s.id} 
+                                                    value={s.id}
+                                                    disabled={s.status === 'unavailable'}
+                                                    style={{ 
+                                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
+                                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
+                                                    }}
+                                                >
+                                                    ⭐ {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
+                                                </option>
+                                            ))
+                                        }
+                                    </optgroup>
+                                </>
+                            )}
+                            
+                            {/* บริการทั้งหมด */}
+                            {services.filter(s => !s.isFavorite).length > 0 && (
+                                <>
+                                    <optgroup label="บริการทั้งหมด">
+                                        {services
+                                            .filter(s => !s.isFavorite)
+                                            .map(s => (
+                                                <option 
+                                                    key={s.id} 
+                                                    value={s.id}
+                                                    disabled={s.status === 'unavailable'}
+                                                    style={{ 
+                                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
+                                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
+                                                    }}
+                                                >
+                                                    {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
+                                                </option>
+                                            ))
+                                        }
+                                    </optgroup>
+                                </>
+                            )}
                         </select>
                         {services.length > 0 && (
                             <p className="text-xs text-gray-500 mt-2">
-                                ทั้งหมด {services.length} บริการ | 
+                                ทั้งหมด {services.length} บริการ
+                                {services.filter(s => s.isFavorite).length > 0 && (
+                                    <span className="text-yellow-600"> | ⭐ รายการโปรด {services.filter(s => s.isFavorite).length}</span>
+                                )} | 
                                 <span className="text-green-600"> เปิดให้บริการ {services.filter(s => s.status === 'available').length}</span> | 
                                 <span className="text-red-600"> งดให้บริการ {services.filter(s => s.status === 'unavailable' || !s.status).length}</span>
                             </p>
