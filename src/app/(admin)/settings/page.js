@@ -382,19 +382,19 @@ export default function AdminSettingsPage() {
                             <p className="text-xs text-gray-500 mt-1">ข้อความนี้จะแสดงเป็นปุ่ม [!] ที่หน้าเลือกเวลาจอง</p>
                         </div>
                         <hr className="my-2" />
-                        <Toggle 
+                        {/* <Toggle 
                             label="โหมดเลือกช่าง" 
                             checked={bookingSettings.useBeautician}
                             onChange={(value) => setBookingSettings(prev => ({...prev, useBeautician: value}))}
-                        />
-                        <div>
+                        /> */}
+                        {/* <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">{bookingSettings.useBeautician ? 'จำนวนช่างทั้งหมด' : 'จำนวนคิวสูงสุด'}</label>
                             <input 
                                 type="number" min={1} value={bookingSettings.totalBeauticians || 1} 
                                 onChange={e => setBookingSettings(prev => ({ ...prev, totalBeauticians: parseInt(e.target.value) || 1 }))} 
                                 className="border rounded-md px-2 py-1 w-full text-sm"
                             />
-                        </div>
+                        </div> */}
                         <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">กำหนดคิว/ช่าง ตามช่วงเวลา</label>
                             <div className="flex gap-2 items-center mb-2">
@@ -424,7 +424,7 @@ export default function AdminSettingsPage() {
                     </SettingsCard>
                     
 
-                    <SettingsCard title="การตั้งค่าการชำระเงิน">
+                    {/* <SettingsCard title="การตั้งค่าการชำระเงิน">
                        <div className="flex items-center mb-2 space-x-6">
                             <label className="flex items-center"><input type="radio" name="paymentMethod" value="promptpay" checked={paymentSettings.method === 'promptpay'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>PromptPay</label>
                             <label className="flex items-center"><input type="radio" name="paymentMethod" value="image" checked={paymentSettings.method === 'image'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>รูปภาพ QR</label>
@@ -448,7 +448,7 @@ export default function AdminSettingsPage() {
                                 {paymentSettings.qrCodeImageUrl && <img src={paymentSettings.qrCodeImageUrl} alt="QR Code Preview" className="w-24 h-24 mt-2 border"/>}
                             </div>
                         )}
-                    </SettingsCard>
+                    </SettingsCard> */}
 
                 </div>
 
@@ -531,7 +531,7 @@ export default function AdminSettingsPage() {
                             </div>
                         </div>
                     </SettingsCard>
-                    <SettingsCard title="แจ้งเตือนประจำวัน (Manual)">
+                    {/* <SettingsCard title="แจ้งเตือนประจำวัน (Manual)">
                         <p className="text-xs text-gray-500 mt-1 mb-3">
                             ใช้สำหรับส่งแจ้งเตือนลูกค้าทุกคนที่มีนัดหมายในวันนี้ทันที (ระบบจะส่งอัตโนมัติทุก 08:00 น. อยู่แล้ว)
                         </p>
@@ -543,8 +543,8 @@ export default function AdminSettingsPage() {
                                 {isSending ? 'กำลังส่ง...' : '📅 ส่งแจ้งเตือนทันที'}
                             </button>
                         </div>
-                    </SettingsCard>
-                       <SettingsCard title="Google Calendar Sync">
+                    </SettingsCard> */}
+                       {/* <SettingsCard title="Google Calendar Sync">
                         <Toggle 
                             label="เปิดการเชื่อมต่อ" 
                             checked={calendarSettings.enabled}
@@ -565,7 +565,7 @@ export default function AdminSettingsPage() {
                                 </p>
                             </div>
                         )}
-                    </SettingsCard>
+                    </SettingsCard> */}
                 </div>
                 
                 <div className="space-y-6">
@@ -603,15 +603,15 @@ export default function AdminSettingsPage() {
                                 <div className="font-semibold text-gray-600 mt-2 mb-1">สถานะงาน</div>
                                 <Toggle label="เมื่อเปลี่ยนเป็น 'กำลังดำเนินการ'" checked={settings.customerNotifications.notifyProcessing} onChange={(value) => handleNotificationChange('customerNotifications', 'notifyProcessing', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
                                 <Toggle label="เมื่อเปลี่ยนเป็น 'เสร็จสิ้น'" checked={settings.customerNotifications.notifyCompleted} onChange={(value) => handleNotificationChange('customerNotifications', 'notifyCompleted', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
-                                <Toggle label="เมื่อบริการเสร็จสิ้น (ทั่วไป)" checked={settings.customerNotifications.serviceCompleted} onChange={(value) => handleNotificationChange('customerNotifications', 'serviceCompleted', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                {/* <Toggle label="เมื่อบริการเสร็จสิ้น (ทั่วไป)" checked={settings.customerNotifications.serviceCompleted} onChange={(value) => handleNotificationChange('customerNotifications', 'serviceCompleted', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/> */}
                                 
-                                <div className="font-semibold text-gray-600 mt-2 mb-1">การชำระเงิน</div>
-                                <Toggle label="แจ้งเตือนชำระเงิน" checked={settings.customerNotifications.paymentInvoice} onChange={(value) => handleNotificationChange('customerNotifications', 'paymentInvoice', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                {/* <div className="font-semibold text-gray-600 mt-2 mb-1">การชำระเงิน</div> */}
+                                {/* <Toggle label="แจ้งเตือนชำระเงิน" checked={settings.customerNotifications.paymentInvoice} onChange={(value) => handleNotificationChange('customerNotifications', 'paymentInvoice', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/> */}
                                 
-                                <div className="font-semibold text-gray-600 mt-2 mb-1">การแจ้งเตือนอื่นๆ</div>
-                                <Toggle label="แจ้งเตือนล่วงหน้า 1 ชม." checked={settings.customerNotifications.appointmentReminder} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentReminder', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนประจำวัน (08:00 น.)" checked={settings.customerNotifications.dailyAppointmentNotification} onChange={(value) => handleNotificationChange('customerNotifications', 'dailyAppointmentNotification', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนขอรีวิว" checked={settings.customerNotifications.reviewRequest} onChange={(value) => handleNotificationChange('customerNotifications', 'reviewRequest', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                {/* <div className="font-semibold text-gray-600 mt-2 mb-1">การแจ้งเตือนอื่นๆ</div> */}
+                                {/* <Toggle label="แจ้งเตือนล่วงหน้า 1 ชม." checked={settings.customerNotifications.appointmentReminder} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentReminder', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/> */}
+                                {/* <Toggle label="แจ้งเตือนประจำวัน (08:00 น.)" checked={settings.customerNotifications.dailyAppointmentNotification} onChange={(value) => handleNotificationChange('customerNotifications', 'dailyAppointmentNotification', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/> */}
+                                {/* <Toggle label="แจ้งเตือนขอรีวิว" checked={settings.customerNotifications.reviewRequest} onChange={(value) => handleNotificationChange('customerNotifications', 'reviewRequest', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/> */}
                             </div>
                         )}
                     </SettingsCard>

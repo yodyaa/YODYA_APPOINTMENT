@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from '@/app/lib/firebaseAdmin';
-import { sendServiceCompletedFlexMessage, sendAppointmentConfirmedFlexMessage, sendAppointmentCancelledFlexMessage } from './lineFlexActions';
+import { sendServiceCompletedFlexMessage, sendAppointmentCancelledFlexMessage } from './lineFlexActions';
 
 export async function updateWorkorderStatusByAdmin({ workorderId, field, value, adminName }) {
   try {
@@ -31,12 +31,16 @@ export async function updateWorkorderStatusByAdmin({ workorderId, field, value, 
 
     if (field === 'processStatus' && customerLineId) {
       try {
-        if (value === 'กำลังดำเนินการ' && notifyProcessing) {
-          console.log('[WORKORDER][updateWorkorderStatusByAdmin] sendAppointmentConfirmedFlexMessage', { customerLineId, workorderData });
-          await sendAppointmentConfirmedFlexMessage(customerLineId, workorderData);
-        } else if (value === 'เสร็จสิ้น' && notifyCompleted) {
+        // ส่ง Flex Message เฉพาะเมื่อเสร็จสิ้น เท่านั้น
+        if (value === 'เสร็จสิ้น' && notifyCompleted) {
           console.log('[WORKORDER][updateWorkorderStatusByAdmin] sendServiceCompletedFlexMessage', { customerLineId, workorderData });
           await sendServiceCompletedFlexMessage(customerLineId, workorderData);
+        } else {
+          console.log('[WORKORDER][updateWorkorderStatusByAdmin] ไม่ส่ง Flex Message', { 
+            value, 
+            notifyCompleted, 
+            reason: (value === 'กำลังดำเนินการ' || value === 'ช่างกำลังดำเนินการ') ? 'ไม่ส่ง Flex สำหรับสถานะกำลังดำเนินการ' : 'สถานะไม่ตรงเงื่อนไข' 
+          });
         }
       } catch (flexErr) {
         console.error('[WORKORDER][updateWorkorderStatusByAdmin] Flex error', flexErr);
@@ -54,34 +58,14 @@ export async function updateWorkorderStatusByAdmin({ workorderId, field, value, 
 
 /**
  * ส่ง Flex Message สถานะ "ยืนยันแล้ว" ไปยัง LINE OA ของลูกค้า
+ * หมายเหตุ: ฟังก์ชันนี้ถูกปิดใช้งานเพื่อป้องกันการส่ง Flex Message ที่ไม่เหมาะสม
  * @param {string} userId - LINE User ID ของลูกค้า
  * @param {object} workorderData - ข้อมูลงานที่สร้าง
  */
 export async function sendWorkorderConfirmedFlex(userId, workorderData) {
   try {
-    console.log('[sendWorkorderConfirmedFlex] เริ่มส่ง Flex:', { userId, workorderData });
-    
-    // สร้าง payload ที่เหมาะสมกับ Flex Template (ต้องมี customerInfo, serviceInfo)
-    const payload = {
-      serviceName: workorderData.serviceName || workorderData.workorder || 'งานบริการ',
-      date: workorderData.date,
-      time: workorderData.time || '',
-      appointmentId: workorderData.appointmentId || workorderData.bookingId || workorderData.idKey || workorderData.id,
-      id: workorderData.id || workorderData.appointmentId || workorderData.bookingId || workorderData.idKey,
-      // เพิ่ม customerInfo ถ้ามี
-      customerInfo: {
-        fullName: workorderData.customerInfo?.fullName || workorderData.name || 'คุณลูกค้า',
-      },
-      // เพิ่ม serviceInfo ถ้ามี
-      serviceInfo: {
-        name: workorderData.serviceInfo?.name || workorderData.serviceName || workorderData.workorder || 'งานบริการ',
-      },
-    };
-    
-    console.log('[sendWorkorderConfirmedFlex] Payload:', payload);
-    const result = await sendAppointmentConfirmedFlexMessage(userId, payload);
-    console.log('[sendWorkorderConfirmedFlex] ผลลัพธ์:', result);
-    return result;
+    console.log('[sendWorkorderConfirmedFlex] ฟังก์ชันนี้ถูกปิดใช้งาน - ไม่ส่ง Flex Message แล้ว');
+    return { success: true, message: 'Function disabled - no Flex message sent' };
   } catch (error) {
     console.error('[sendWorkorderConfirmedFlex] ERROR:', error);
     throw error;

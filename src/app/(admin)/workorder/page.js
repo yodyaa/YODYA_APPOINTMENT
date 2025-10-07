@@ -540,15 +540,20 @@ export default function WorkorderAdminPage() {
                                 // อัพเดทสถานะ
                                 handleInlineEdit(w.id, 'processStatus', newStatus);
 
-                                // แจ้งเตือนแอดมินและลูกค้าเมื่อเปลี่ยนสถานะ
+                                // แจ้งเตือนแอดมินและลูกค้าเมื่อเปลี่ยนสถานะ (เฉพาะ workorder เท่านั้น)
                                 if (newStatus && newStatus !== oldStatus) {
                                   try {
-                                    await notifyStatusChange(
-                                      { ...w, date: w.date || selectedDateStr },
-                                      newStatus,
-                                      oldStatus,
-                                      customerNotifySettings
-                                    );
+                                    // ส่งแจ้งเตือนเฉพาะสำหรับ workorder จริงๆ ไม่ใช่ appointment
+                                    if (w.type !== 'appointment') {
+                                      await notifyStatusChange(
+                                        { ...w, date: w.date || selectedDateStr },
+                                        newStatus,
+                                        oldStatus,
+                                        customerNotifySettings
+                                      );
+                                    } else {
+                                      console.log('[WORK STATUS] ข้าม notifyStatusChange สำหรับ appointment ID:', w.id);
+                                    }
                                   } catch (notifyErr) {
                                     console.error('[WORK STATUS] แจ้งเตือน ERROR:', notifyErr);
                                   }

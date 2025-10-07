@@ -60,7 +60,7 @@ export async function clearAllNotifications() {
  */
 export async function notifyStatusChange(workorderData, newStatus, oldStatus, customerNotifySettings) {
   const { sendBookingNotification } = await import('./lineActions');
-  const { sendAppointmentConfirmedFlexMessage, sendServiceCompletedFlexMessage } = await import('./lineFlexActions');
+  // ไม่ต้อง import Flex Messages แล้ว - จัดการใน handleInlineEdit
   
   try {
     const { 
@@ -116,34 +116,14 @@ export async function notifyStatusChange(workorderData, newStatus, oldStatus, cu
       ? customerInfo?.lineUserId 
       : userIDline;
 
+    // ปิดการส่ง Flex Message ทั้งหมดใน notificationActions 
+    // เพราะจัดการแล้วใน handleInlineEdit
     if (customerLineId && customerNotifySettings) {
-      if (newStatus === 'ช่างกำลังดำเนินการ' && customerNotifySettings.notifyProcessing) {
-        console.log('[CUSTOMER NOTIFY] ส่งการแจ้งเตือนลูกค้า: กำลังดำเนินการ');
-        const appointmentData = {
-          id: id,
-          customerInfo: { fullName: customerName },
-          serviceInfo: { name: serviceNameValue },
-          date: date,
-          time: time || '',
-          appointmentInfo: {
-            beauticianName: type === 'appointment' 
-              ? (appointmentInfo?.beauticianName || 'พนักงาน')
-              : (beauticianName || responsible || 'พนักงาน')
-          }
-        };
-        await sendAppointmentConfirmedFlexMessage(customerLineId, appointmentData);
-        console.log('[CUSTOMER NOTIFY] ส่งการแจ้งเตือนลูกค้าสำเร็จ: กำลังดำเนินการ');
-      } else if (newStatus === 'เสร็จสิ้น' && customerNotifySettings.notifyCompleted) {
-        console.log('[CUSTOMER NOTIFY] ส่งการแจ้งเตือนลูกค้า: เสร็จสิ้น');
-        const completedData = {
-          id: id,
-          customerInfo: { fullName: customerName },
-          serviceInfo: { name: serviceNameValue },
-          totalPointsAwarded: 0 // หรือคำนวณแต้มจริง
-        };
-        await sendServiceCompletedFlexMessage(customerLineId, completedData);
-        console.log('[CUSTOMER NOTIFY] ส่งการแจ้งเตือนลูกค้าสำเร็จ: เสร็จสิ้น');
-      }
+      console.log('[CUSTOMER NOTIFY] ข้าม Flex Message - จัดการแล้วใน handleInlineEdit:', {
+        newStatus,
+        customerLineId: customerLineId ? 'มี' : 'ไม่มี',
+        type: type || 'workorder'
+      });
     }
 
     return { success: true };
