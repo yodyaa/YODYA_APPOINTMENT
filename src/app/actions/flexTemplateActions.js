@@ -935,7 +935,7 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
                         ],
                         spacing: "sm",
                         margin: "lg",
-                        // paddingAll: "12px", // LINE API ไม่รองรับ
+                        paddingAll: "12px",
                         backgroundColor: "#F8F8F8",
                         cornerRadius: "8px"
                     },
@@ -948,26 +948,38 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
                             margin: "lg"
                         },
                         {
-                            type: "text",
-                            text: `"${reason}"`,
-                            size: "md",
-                            color: "#333333",
+                            type: "box",
+                            layout: "vertical",
+                            contents: [
+                                {
+                                    type: "text",
+                                    text: `"${reason}"`,
+                                    size: "md",
+                                    color: "#333333",
+                                    wrap: true,
+                                    style: "italic"
+                                }
+                            ],
                             margin: "sm",
-                            wrap: true,
-                            style: "italic",
-                            // paddingAll: "12px", // LINE API ไม่รองรับ
+                            paddingAll: "12px",
                             backgroundColor: "#F8F8F8",
                             cornerRadius: "8px"
                         }
                     ] : []),
                     {
-                        type: "text",
-                        text: "หากต้องการจองบริการใหม่ สามารถติดต่อเราได้ตลอดเวลา 🌿",
-                        size: "sm",
-                        color: "#FF6B6B",
-                        wrap: true,
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                            {
+                                type: "text",
+                                text: "หากต้องการจองบริการใหม่ สามารถติดต่อเราได้ตลอดเวลา 🌿",
+                                size: "sm",
+                                color: "#FF6B6B",
+                                wrap: true,
+                                align: "center"
+                            }
+                        ],
                         margin: "lg",
-                        align: "center",
                         paddingAll: "12px",
                         backgroundColor: "#FFE8E8",
                         cornerRadius: "8px"

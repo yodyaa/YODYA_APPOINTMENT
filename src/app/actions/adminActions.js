@@ -140,3 +140,50 @@ export async function updateAdmin(adminId, updateData) {
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Verifies if a LINE User ID belongs to an admin user.
+ * @param {string} lineUserId - The LINE User ID to check
+ * @returns {Promise<{success: boolean, isAdmin: boolean, adminData?: object, error?: string}>}
+ */
+export async function verifyAdminByLineId(lineUserId) {
+    if (!lineUserId) {
+        return { success: false, error: 'LINE User ID is required' };
+    }
+
+    try {
+        console.log(`[ADMIN VERIFY] Checking LINE User ID: ${lineUserId}`);
+        
+        // ค้นหาในคอลเล็กชัน admins โดยใช้ lineUserId
+        const adminsRef = db.collection('admins');
+        const querySnapshot = await adminsRef.where('lineUserId', '==', lineUserId).get();
+        
+        if (!querySnapshot.empty) {
+            // พบแอดมินที่มี LINE User ID ตรงกัน
+            const adminDoc = querySnapshot.docs[0]; // เอาตัวแรกที่เจอ
+            const adminData = adminDoc.data();
+            
+            console.log(`[ADMIN VERIFY] Found admin: ${adminData.firstName} ${adminData.lastName}`);
+            
+            return {
+                success: true,
+                isAdmin: true,
+                adminData: {
+                    id: adminDoc.id,
+                    firstName: adminData.firstName,
+                    lastName: adminData.lastName,
+                    email: adminData.email,
+                    lineUserId: adminData.lineUserId,
+                    role: adminData.role || 'admin'
+                }
+            };
+        } else {
+            // ไม่พบแอดมินที่มี LINE User ID นี้
+            console.log(`[ADMIN VERIFY] No admin found with LINE User ID: ${lineUserId}`);
+            return { success: true, isAdmin: false };
+        }
+    } catch (error) {
+        console.error(`[ADMIN VERIFY] Error checking LINE User ID ${lineUserId}:`, error);
+        return { success: false, error: error.message };
+    }
+}

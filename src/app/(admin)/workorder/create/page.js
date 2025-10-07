@@ -4,6 +4,7 @@ import { db } from "@/app/lib/firebase";
 import { collection, getDocs, query, where, addDoc, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { sendWorkorderConfirmedFlex, sendAppointmentCancelledFlex } from '@/app/actions/workorderActions';
 import { sendBookingNotification } from '@/app/actions/lineActions';
+import { getNotificationSettings } from '@/app/actions/settingsActions';
 import { useRouter } from "next/navigation";
 import { useToast } from '@/app/components/Toast';
 import { format, startOfDay, endOfDay, parseISO } from "date-fns";
@@ -265,14 +266,26 @@ export default function CreateWorkorderPage() {
         bookingId: selectedBooking?.id || ""
       };
       const docRef = await addDoc(collection(db, "workorders"), workorderData);
+      
       // ส่ง Flex Message สถานะยืนยันแล้ว
-      if (form.userIDline) {
-        console.log('[CREATE][Flex] เรียกส่ง Flex ไปยัง userIDline:', form.userIDline, workorderData);
-        try {
-          await sendWorkorderConfirmedFlex(form.userIDline, workorderData);
-          console.log('[CREATE][Flex] ส่ง Flex สำเร็จ');
-        } catch (flexErr) {
-          console.error('[CREATE][Flex] ERROR', flexErr);
+      if (form.userIDline && form.userIDline.startsWith('U')) {
+        // ตรวจสอบการตั้งค่าการแจ้งเตือนก่อนส่ง Flex
+        const { success: settingsSuccess, settings: notificationSettings } = await getNotificationSettings();
+        const shouldNotifyCustomer = settingsSuccess && 
+          notificationSettings?.allNotifications?.enabled &&
+          notificationSettings?.customerNotifications?.enabled &&
+          notificationSettings?.customerNotifications?.appointmentConfirmed;
+        
+        if (!shouldNotifyCustomer) {
+          console.log('[CREATE][Manual] การแจ้งเตือนลูกค้าถูกปิดในการตั้งค่า - ข้ามการส่ง Flex');
+        } else {
+          console.log('[CREATE][Flex] เรียกส่ง Flex ไปยัง userIDline:', form.userIDline, workorderData);
+          try {
+            await sendWorkorderConfirmedFlex(form.userIDline, workorderData);
+            console.log('[CREATE][Flex] ส่ง Flex สำเร็จ');
+          } catch (flexErr) {
+            console.error('[CREATE][Flex] ERROR', flexErr);
+          }
         }
       }
 
@@ -320,38 +333,57 @@ export default function CreateWorkorderPage() {
       
       showToast("ยกเลิกการจองสำเร็จ", "success");
       
+      // ตรวจสอบการตั้งค่าการแจ้งเตือนก่อนส่ง Flex
+      const { success: settingsSuccess, settings: notificationSettings } = await getNotificationSettings();
+      const shouldNotifyCustomer = settingsSuccess && 
+        notificationSettings?.allNotifications?.enabled &&
+        notificationSettings?.customerNotifications?.enabled &&
+        notificationSettings?.customerNotifications?.appointmentCancelled;
+      
+      if (!shouldNotifyCustomer) {
+        console.log('[CANCEL] การแจ้งเตือนลูกค้าถูกปิดในการตั้งค่า - ข้ามการส่ง Flex');
+        return;
+      }
+      
       // ส่ง Flex Message แจ้งลูกค้าเมื่อยกเลิก
       const customer = bookingCustomers[booking.id];
-      // ดึง LINE User ID ที่ถูกต้อง (ต้องขึ้นต้นด้วย U)
-      const lineId = booking.lineUserId || booking.userId || customer?.lineUserId || customer?.userId || "";
-      
-      // ตรวจสอบว่าเป็น LINE User ID ที่ถูกต้องหรือไม่ (ต้องขึ้นต้นด้วย U)
-      const isValidLineId = lineId && lineId.startsWith('U');
-      
-      if (isValidLineId) {
+      // รวม candidate LINE IDs ที่เป็นไปได้ (เรียงลำดับความน่าเชื่อถือ)
+      const candidateLineIds = [
+        booking.lineUserId,
+        booking.userId,
+        booking.customerInfo?.lineUserId,
+        booking.customerInfo?.customerId, // บางโครงสร้างอาจใช้เป็น line id
+        customer?.lineUserId,
+        customer?.userId,
+        customer?.customerId
+      ].filter(Boolean);
+
+      // หาตัวแรกที่ขึ้นต้นด้วย 'U'
+      const lineId = candidateLineIds.find(id => typeof id === 'string' && id.startsWith('U')) || '';
+
+      console.log('[CANCEL][DEBUG] Candidates LINE IDs:', candidateLineIds, 'Chosen:', lineId);
+
+      if (lineId) {
         try {
-          console.log('[CANCEL] ส่ง Flex ไปยัง LINE ID:', lineId);
-          // ส่ง Flex Message ยกเลิกการนัดหมาย (ผ่าน Server Action)
-          await sendAppointmentCancelledFlex(
-            lineId,
-            {
-              serviceName: booking.serviceInfo?.name || booking.serviceName || 'บริการ',
-              date: booking.date || '',
-              time: booking.time || '',
-              customerInfo: {
-                fullName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
-                phone: booking.phone || booking.customerInfo?.phone || customer?.phone || '',
-              },
-              id: booking.id,
+          console.log('[CANCEL] ส่ง Flex ยกเลิก ไปยัง LINE ID:', lineId);
+          const flexPayload = {
+            serviceName: booking.serviceInfo?.name || booking.serviceName || 'บริการ',
+            date: booking.date || '',
+            time: booking.time || '',
+            customerInfo: {
+              fullName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
+              phone: booking.phone || booking.customerInfo?.phone || customer?.phone || '',
             },
-            'ยกเลิกโดยแอดมิน'
-          );
+            id: booking.id,
+          };
+          console.log('[CANCEL][DEBUG] Flex Payload:', flexPayload);
+          await sendAppointmentCancelledFlex(lineId, flexPayload, 'ยกเลิกโดยแอดมิน');
           console.log('[CANCEL][Flex] ส่ง Flex ยกเลิกสำเร็จ');
         } catch (flexErr) {
-          console.error('[CANCEL][Flex] ERROR', flexErr);
+          console.error('[CANCEL][Flex] ERROR ส่งไม่สำเร็จ รอบหลัก', flexErr);
         }
       } else {
-        console.log('[CANCEL] ไม่พบ LINE User ID ที่ถูกต้อง, ข้ามการส่ง Flex');
+        console.warn('[CANCEL] ไม่พบ LINE ID ที่เริ่มต้นด้วย U ข้ามการส่ง Flex');
       }
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -436,38 +468,49 @@ export default function CreateWorkorderPage() {
       const isValidLineId = lineId && lineId.startsWith('U');
       
       if (isValidLineId) {
-        console.log('[CREATE] ส่ง Flex ไปยัง LINE ID:', lineId);
-        // สร้าง payload ที่เป็น plain object และมีข้อมูลจากฟอร์มที่กรอก (เพราะอาจมีการเปลี่ยนแปลง)
-        const flexPayload = {
-          serviceName: serviceName,
-          date: date || booking.date || '',
-          time: time || booking.time || '',
-          appointmentId: booking?.id || '',
-          id: booking?.id || '',
-          // ข้อมูลจากฟอร์ม (ที่อาจเปลี่ยนแปลง)
-          gardenerName: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || '',
-          caseNumber: caseNumber || '',
-          price: price || booking.price || booking.serviceInfo?.price || '',
-        };
-        // เพิ่ม customerInfo ถ้ามี
-        if (booking?.customerInfo?.fullName || booking?.fullName || customer?.fullName) {
-          flexPayload.customerInfo = {
-            fullName: booking?.customerInfo?.fullName || booking?.fullName || customer?.fullName || '',
+        // ตรวจสอบการตั้งค่าการแจ้งเตือนก่อนส่ง Flex
+        const { success: settingsSuccess, settings: notificationSettings } = await getNotificationSettings();
+        const shouldNotifyCustomer = settingsSuccess && 
+          notificationSettings?.allNotifications?.enabled &&
+          notificationSettings?.customerNotifications?.enabled &&
+          notificationSettings?.customerNotifications?.appointmentConfirmed;
+        
+        if (!shouldNotifyCustomer) {
+          console.log('[CREATE] การแจ้งเตือนลูกค้าถูกปิดในการตั้งค่า - ข้ามการส่ง Flex');
+        } else {
+          console.log('[CREATE] ส่ง Flex ไปยัง LINE ID:', lineId);
+          // สร้าง payload ที่เป็น plain object และมีข้อมูลจากฟอร์มที่กรอก (เพราะอาจมีการเปลี่ยนแปลง)
+          const flexPayload = {
+            serviceName: serviceName,
+            date: date || booking.date || '',
+            time: time || booking.time || '',
+            appointmentId: booking?.id || '',
+            id: booking?.id || '',
+            // ข้อมูลจากฟอร์ม (ที่อาจเปลี่ยนแปลง)
+            gardenerName: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || '',
+            caseNumber: caseNumber || '',
+            price: price || booking.price || booking.serviceInfo?.price || '',
           };
-          if (booking?.customerInfo?.phone || booking?.phone || customer?.phone) {
-            flexPayload.customerInfo.phone = booking?.customerInfo?.phone || booking?.phone || customer?.phone || '';
+          // เพิ่ม customerInfo ถ้ามี
+          if (booking?.customerInfo?.fullName || booking?.fullName || customer?.fullName) {
+            flexPayload.customerInfo = {
+              fullName: booking?.customerInfo?.fullName || booking?.fullName || customer?.fullName || '',
+            };
+            if (booking?.customerInfo?.phone || booking?.phone || customer?.phone) {
+              flexPayload.customerInfo.phone = booking?.customerInfo?.phone || booking?.phone || customer?.phone || '';
+            }
           }
-        }
-        // เพิ่ม serviceInfo ถ้ามี
-        if (serviceName) {
-          flexPayload.serviceInfo = { name: serviceName };
-        }
-        console.log('[CREATE][Flex] เรียกส่ง Flex จากนัดหมายไปยัง userIDline:', lineId, flexPayload);
-        try {
-          await sendWorkorderConfirmedFlex(lineId, flexPayload);
-          console.log('[CREATE][Flex] ส่ง Flex สำเร็จ (จากนัดหมาย)');
-        } catch (flexErr) {
-          console.error('[CREATE][Flex] ERROR (จากนัดหมาย)', flexErr);
+          // เพิ่ม serviceInfo ถ้ามี
+          if (serviceName) {
+            flexPayload.serviceInfo = { name: serviceName };
+          }
+          console.log('[CREATE][Flex] เรียกส่ง Flex จากนัดหมายไปยัง userIDline:', lineId, flexPayload);
+          try {
+            await sendWorkorderConfirmedFlex(lineId, flexPayload);
+            console.log('[CREATE][Flex] ส่ง Flex สำเร็จ (จากนัดหมาย)');
+          } catch (flexErr) {
+            console.error('[CREATE][Flex] ERROR (จากนัดหมาย)', flexErr);
+          }
         }
       } else {
         console.log('[CREATE] ไม่พบ LINE User ID ที่ถูกต้อง, ข้ามการส่ง Flex');

@@ -1,7 +1,11 @@
 "use server";
 
 import { db } from '@/app/lib/firebaseAdmin';
-import { sendServiceCompletedFlexMessage, sendAppointmentCancelledFlexMessage } from './lineFlexActions';
+import { 
+  sendServiceCompletedFlexMessage, 
+  sendAppointmentCancelledFlexMessage,
+  sendAppointmentConfirmedFlexMessage 
+} from './lineFlexActions';
 
 export async function updateWorkorderStatusByAdmin({ workorderId, field, value, adminName }) {
   try {
@@ -64,11 +68,69 @@ export async function updateWorkorderStatusByAdmin({ workorderId, field, value, 
  */
 export async function sendWorkorderConfirmedFlex(userId, workorderData) {
   try {
-    console.log('[sendWorkorderConfirmedFlex] ฟังก์ชันนี้ถูกปิดใช้งาน - ไม่ส่ง Flex Message แล้ว');
-    return { success: true, message: 'Function disabled - no Flex message sent' };
+    if (!userId || !userId.startsWith('U')) {
+      console.warn('[sendWorkorderConfirmedFlex] ไม่พบ LINE User ID ที่ถูกต้อง ข้ามการส่ง');
+      return { success: false, error: 'invalid-line-user-id' };
+    }
+    console.log('[sendWorkorderConfirmedFlex] ส่ง Flex ยืนยันงาน:', { userId, workorderData });
+    // แปลง payload ให้มีโครงสร้างคล้าย appointment เพื่อใช้ template เดิม
+    const payload = {
+      id: workorderData.id || workorderData.idKey || '',
+      serviceInfo: { name: workorderData.serviceName || workorderData.workorder || 'งานบริการ' },
+      customerInfo: { fullName: workorderData.name || 'ลูกค้า' },
+      date: workorderData.date,
+      time: workorderData.time || '',
+      appointmentInfo: {},
+      gardenerName: workorderData.responsible || workorderData.gardenerName || '',
+      caseNumber: workorderData.caseNumber || '',
+      price: workorderData.price || workorderData.payment || ''
+    };
+    const result = await sendAppointmentConfirmedFlexMessage(userId, payload);
+    console.log('[sendWorkorderConfirmedFlex] ส่งสำเร็จ');
+    return result;
   } catch (error) {
     console.error('[sendWorkorderConfirmedFlex] ERROR:', error);
-    throw error;
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * ยกเลิก workorder และแจ้งลูกค้า (ถ้ามี LINE ID)
+ */
+export async function cancelWorkorderAndNotify({ workorderId, reason = 'ยกเลิกโดยแอดมิน' }) {
+  try {
+    const ref = db.collection('workorders').doc(workorderId);
+    const snap = await ref.get();
+    if (!snap.exists) return { success: false, error: 'not-found' };
+    const data = snap.data();
+
+    // อัปเดตสถานะในฐานข้อมูล
+    await ref.update({ status: 'cancelled', processStatus: 'cancelled', cancelledAt: new Date(), cancelReason: reason });
+
+    // เลือก LINE ID
+    const lineId = data.customerLineId || data.lineUserId || data.userIDline || data.customerInfo?.lineUserId || '';
+    if (lineId && lineId.startsWith('U')) {
+      try {
+        const payload = {
+          id: workorderId,
+          serviceInfo: { name: data.serviceName || data.workorder || 'งานบริการ' },
+            customerInfo: { fullName: data.name || data.customerInfo?.fullName || 'ลูกค้า' },
+          date: data.date || '',
+          time: data.time || ''
+        };
+        console.log('[cancelWorkorderAndNotify] ส่ง Flex ยกเลิกให้ลูกค้า', { lineId, reason });
+        await sendAppointmentCancelledFlexMessage(lineId, payload, reason);
+      } catch (flexErr) {
+        console.error('[cancelWorkorderAndNotify] Flex error', flexErr);
+      }
+    } else {
+      console.log('[cancelWorkorderAndNotify] ไม่มี LINE ID สำหรับ workorder นี้');
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[cancelWorkorderAndNotify] ERROR', err);
+    return { success: false, error: err.message };
   }
 }
 
