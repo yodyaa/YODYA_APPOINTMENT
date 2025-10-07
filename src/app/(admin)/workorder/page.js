@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 // ...existing code...
 import { updateWorkorderStatusByAdmin } from "@/app/actions/workorderActions";
 import { notifyStatusChange, notifyPaymentStatusChange } from "@/app/actions/notificationActions";
+import { sendServiceCompletedFlexMessage } from "@/app/actions/lineFlexActions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/app/lib/firebase";
 import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
@@ -195,11 +196,8 @@ export default function WorkorderAdminPage() {
             notifyProcessing: customerNotifySettings.notifyProcessing,
             notifyCompleted: customerNotifySettings.notifyCompleted
           });
-          if (value === 'ช่างกำลังดำเนินการ' && customerNotifySettings.notifyProcessing) {
-            console.log('[LINE FLEX] เรียก sendAppointmentConfirmedFlexMessage', { customerLineId, appointmentData });
-            const result = await sendAppointmentConfirmedFlexMessage(customerLineId, appointmentData);
-            console.log('[LINE FLEX] ผลลัพธ์ sendAppointmentConfirmedFlexMessage', result);
-          } else if (value === 'เสร็จสิ้น' && customerNotifySettings.notifyCompleted) {
+          // ส่ง Flex Message เฉพาะเมื่อเสร็จสิ้น เท่านั้น
+          if (value === 'เสร็จสิ้น' && customerNotifySettings.notifyCompleted) {
             console.log('[LINE FLEX] เรียก sendServiceCompletedFlexMessage', { customerLineId, appointmentData });
             const result = await sendServiceCompletedFlexMessage(customerLineId, appointmentData);
             console.log('[LINE FLEX] ผลลัพธ์ sendServiceCompletedFlexMessage', result);
@@ -209,7 +207,8 @@ export default function WorkorderAdminPage() {
               value,
               customerLineId,
               notifyProcessing: customerNotifySettings.notifyProcessing,
-              notifyCompleted: customerNotifySettings.notifyCompleted
+              notifyCompleted: customerNotifySettings.notifyCompleted,
+              reason: value === 'ช่างกำลังดำเนินการ' ? 'ไม่ส่ง Flex สำหรับสถานะกำลังดำเนินการ' : 'สถานะไม่ตรงเงื่อนไข'
             });
           }
         } else if (field === 'processStatus') {
