@@ -691,14 +691,13 @@ export default function CreateWorkorderPage() {
                         />
                       </div>
                       <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700">เลือกช่าง</label>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">เลือกช่าง (ไม่บังคับ)</label>
                         <select
                           className="w-full p-2 border rounded mb-4"
                           value={assignEmployeeId}
                           onChange={e => setAssignEmployeeId(e.target.value)}
-                          required
                         >
-                          <option value="">-- เลือกช่าง --</option>
+                          <option value="">-- ยังไม่ระบุช่าง --</option>
                           {gardeners.map((gardener, idx) => (
                             <option key={gardener.id ? gardener.id + '-' + idx : idx} value={gardener.id}>{gardener.fullName || gardener.name || gardener.firstName + ' ' + (gardener.lastName || '')}</option>
                           ))}

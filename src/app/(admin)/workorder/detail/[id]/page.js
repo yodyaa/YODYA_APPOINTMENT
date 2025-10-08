@@ -74,7 +74,7 @@ export default function WorkorderDetailPage({ params }) {
   }
 
   return (
-  <div className="ccontainer mx-auto p-4 md:p-8">
+  <div className="container mx-auto p-4 md:p-8">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6 flex justify-between items-center">
         <div>
@@ -93,18 +93,7 @@ export default function WorkorderDetailPage({ params }) {
                   try {
                     await updateDoc(doc(db, 'workorders', workorder.id), {
                       ...editFields,
-                      name: editFields.name,
-                      village: editFields.village,
-                      contact: editFields.contact,
-                      address: editFields.address,
-                      mapLink: editFields.mapLink,
-                      detail: editFields.detail,
-                      note: editFields.note,
-                      processStatus: editFields.processStatus,
-                      beauticianName: editFields.beauticianName,
-                      caseNumber: editFields.caseNumber,
-                      workorder: editFields.workorder,
-                      bookingId: editFields.bookingId
+                      updatedAt: new Date().toISOString()
                     });
                     setWorkorder(w => ({ ...w, ...editFields }));
                     setEditMode(false);
@@ -147,6 +136,21 @@ export default function WorkorderDetailPage({ params }) {
                   }
                 }}
               >คัดลอกงาน</button>
+              <button
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                onClick={async () => {
+                  if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบงานนี้? การกระทำนี้ไม่สามารถยกเลิกได้')) {
+                    try {
+                      const { deleteDoc } = await import('firebase/firestore');
+                      await deleteDoc(doc(db, 'workorders', workorder.id));
+                      alert('ลบงานสำเร็จ!');
+                      router.push('/workorder');
+                    } catch (err) {
+                      alert('เกิดข้อผิดพลาดในการลบงาน');
+                    }
+                  }
+                }}
+              >ลบงาน</button>
             </>
           )}
         </div>
@@ -182,14 +186,14 @@ export default function WorkorderDetailPage({ params }) {
                   value={editFields.processStatus || ''}
                   onChange={e => setEditFields(f => ({ ...f, processStatus: e.target.value }))}
                 >
-                  <option value="ใหม่">ใหม่</option>
-                  <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+                  <option value="อยู่ในแผนงาน">อยู่ในแผนงาน</option>
+                  <option value="ช่างกำลังดำเนินการ">ช่างกำลังดำเนินการ</option>
                   <option value="เสร็จสิ้น">เสร็จสิ้น</option>
                 </select>
               ) : (
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  workorder.processStatus === 'ใหม่' ? 'bg-blue-100 text-blue-800' :
-                  workorder.processStatus === 'กำลังดำเนินการ' ? 'bg-yellow-100 text-yellow-800' :
+                  workorder.processStatus === 'อยู่ในแผนงาน' ? 'bg-blue-100 text-blue-800' :
+                  workorder.processStatus === 'ช่างกำลังดำเนินการ' ? 'bg-yellow-100 text-yellow-800' :
                   workorder.processStatus === 'เสร็จสิ้น' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
@@ -340,29 +344,21 @@ export default function WorkorderDetailPage({ params }) {
           <div className="space-y-2">
             {/* Timeline */}
             <div className="mb-4">
-              <label className="block font-medium text-gray-600 mb-2">สถานะการดำเนินงาน (Timeline)</label>
+              <label className="block font-medium text-gray-600 mb-2">สถานะการดำเนินงาน</label>
               <ol className="relative border-l-2 border-gray-300 ml-3">
                 {[
-                  { key: 'ยืนยัน', color: 'bg-blue-500', status: 'confirmed' },
-                  { key: 'กำลังดำเนินการ', color: 'bg-yellow-500', status: 'in_progress' },
-                  { key: 'เสร็จสิ้น', color: 'bg-green-500', status: 'completed' },
-                  { key: 'เก็บเงินแล้ว', color: 'bg-pink-500', status: 'paid' }
+                  { key: 'อยู่ในแผนงาน', color: 'bg-blue-500', status: 'อยู่ในแผนงาน' },
+                  { key: 'ช่างกำลังดำเนินการ', color: 'bg-yellow-500', status: 'ช่างกำลังดำเนินการ' },
+                  { key: 'เสร็จสิ้น', color: 'bg-green-500', status: 'เสร็จสิ้น' }
                 ].map((step, idx) => {
-                  // Map workorder.status or processStatus to timeline
                   const statusMap = {
-                    'confirmed': 0,
-                    'in_progress': 1,
-                    'completed': 2,
-                    'paid': 3,
-                    // Fallback for processStatus legacy
-                    'ใหม่': 0,
-                    'กำลังดำเนินการ': 1,
+                    'อยู่ในแผนงาน': 0,
+                    'ช่างกำลังดำเนินการ': 1,
                     'เสร็จสิ้น': 2
                   };
-                  // Prefer status, fallback to processStatus
-                  const currentIdx = statusMap[workorder.status] !== undefined
-                    ? statusMap[workorder.status]
-                    : (statusMap[workorder.processStatus] !== undefined ? statusMap[workorder.processStatus] : -1);
+                  const currentIdx = statusMap[workorder.processStatus] !== undefined
+                    ? statusMap[workorder.processStatus]
+                    : -1;
                   const isActive = idx === currentIdx;
                   const isCompleted = idx < currentIdx;
                   return (
@@ -370,8 +366,7 @@ export default function WorkorderDetailPage({ params }) {
                       <div className="flex items-center">
                         <span
                           className={`flex items-center justify-center w-5 h-5 rounded-full border-2
-                            ${isCompleted ? step.color : isActive ? 'border-blue-500' : 'border-gray-300'}
-                            ${isCompleted ? step.color : isActive ? '' : 'bg-white'}
+                            ${isCompleted ? step.color + ' border-transparent' : isActive ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'}
                           `}
                         >
                           {isCompleted && (
@@ -380,14 +375,56 @@ export default function WorkorderDetailPage({ params }) {
                             </svg>
                           )}
                         </span>
-                        <span className={`ml-3 text-xs font-medium ${isActive ? 'text-blue-700' : 'text-gray-600'}`}>{step.key}</span>
+                        <span className={`ml-3 text-xs font-medium ${isActive ? 'text-blue-700 font-semibold' : isCompleted ? 'text-green-700' : 'text-gray-500'}`}>{step.key}</span>
                       </div>
                     </li>
                   );
                 })}
               </ol>
             </div>
-            {/* Removed การชำระเงิน and ผู้ดูแล fields */}
+            
+            <div>
+              <label className="block font-medium text-gray-600 mb-1">ราคา</label>
+              {editMode ? (
+                <input
+                  type="number"
+                  className="text-sm font-semibold text-pink-600 bg-pink-50 p-2 rounded w-full"
+                  value={editFields.price !== undefined && editFields.price !== null ? String(editFields.price) : ''}
+                  onChange={e => setEditFields(f => ({ ...f, price: e.target.value }))}
+                  min={0}
+                />
+              ) : (
+                <div className="text-sm font-semibold text-pink-600 bg-pink-50 p-2 rounded">{safe(workorder.price, 'ยังไม่ระบุ')} บาท</div>
+              )}
+            </div>
+            
+            <div>
+              <label className="block font-medium text-gray-600 mb-1">สถานะเก็บเงิน</label>
+              {editMode ? (
+                <select
+                  className="text-sm font-medium bg-gray-50 p-2 rounded w-full"
+                  value={editFields.paymentStatus || ''}
+                  onChange={e => setEditFields(f => ({ ...f, paymentStatus: e.target.value }))}
+                >
+                  <option value="">เลือกสถานะ</option>
+                  <option value="ส่งงานเรียบร้อยแล้ว">ส่งงานเรียบร้อยแล้ว</option>
+                  <option value="เก็บเงินได้แล้ว">เก็บเงินได้แล้ว</option>
+                  <option value="ติดตามทวงหนี้ ครั้งที่ 1">ติดตามทวงหนี้ ครั้งที่ 1</option>
+                  <option value="ติดตามทวงหนี้ ครั้งที่ 2">ติดตามทวงหนี้ ครั้งที่ 2</option>
+                  <option value="ติดตามทวงหนี้ ครั้งที่ 3">ติดตามทวงหนี้ ครั้งที่ 3</option>
+                </select>
+              ) : (
+                <div className={`text-sm font-medium p-2 rounded ${
+                  workorder.paymentStatus === 'เก็บเงินได้แล้ว' ? 'bg-green-100 text-green-800' :
+                  workorder.paymentStatus === 'ส่งงานเรียบร้อยแล้ว' ? 'bg-blue-100 text-blue-800' :
+                  workorder.paymentStatus?.includes('ติดตามทวงหนี้') ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {safe(workorder.paymentStatus, 'ยังไม่ระบุ')}
+                </div>
+              )}
+            </div>
+            
             {workorder.adminNote && (
               <div>
                 <label className="block font-medium text-gray-600 mb-1">หมายเหตุผู้ดูแลระบบ</label>
@@ -400,17 +437,18 @@ export default function WorkorderDetailPage({ params }) {
         {/* ข้อมูลบริการ */}
         <div className="bg-white rounded-lg shadow p-4">
           <h2 className="text-sm font-semibold text-gray-800 mb-2 border-b border-gray-200 pb-1">ข้อมูลบริการ</h2>
+          <div className="space-y-2">
             <div>
               <label className="block font-medium text-gray-600 mb-1">เคสที่</label>
               {editMode ? (
                 <input
                   type="text"
-                  className="w-10 h-10 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold flex items-center justify-center"
+                  className="w-full text-center bg-indigo-100 text-indigo-800 rounded px-2 py-1 text-sm font-bold"
                   value={typeof editFields.caseNumber === 'string' ? editFields.caseNumber : (editFields.caseNumber ? String(editFields.caseNumber) : '')}
                   onChange={e => setEditFields(f => ({ ...f, caseNumber: e.target.value }))}
                 />
               ) : (
-                <span className="w-10 h-10 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold flex items-center justify-center">{safe(workorder.caseNumber, '?')}</span>
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold flex items-center justify-center">{safe(workorder.caseNumber, '?')}</div>
               )}
             </div>
             <div>
@@ -426,29 +464,10 @@ export default function WorkorderDetailPage({ params }) {
                 <div className="text-sm font-semibold text-indigo-600 bg-indigo-50 p-2 rounded">{safe(workorder.beauticianName || workorder.responsible)}</div>
               )}
             </div>
-            <div>
-              <label className="block font-medium text-gray-600 mb-1">ราคา</label>
-              {editMode ? (
-                <input
-                  type="number"
-                  className="text-sm font-semibold text-pink-600 bg-pink-50 p-2 rounded w-full"
-                  value={editFields.price !== undefined && editFields.price !== null ? String(editFields.price) : ''}
-                  onChange={e => setEditFields(f => ({ ...f, price: e.target.value }))}
-                  min={0}
-                />
-              ) : (
-                <div className="text-sm font-semibold text-pink-600 bg-pink-50 p-2 rounded">{safe(workorder.price, 'ยังไม่ระบุ')} บาท</div>
-              )}
-            </div>
-          <div className="space-y-2">
-            <div>
-              <label className="block font-medium text-gray-600 mb-1">ชื่อบริการ</label>
-              <div className="text-base font-semibold text-gray-800 bg-gray-50 p-2 rounded">{safe(workorder.workorder)}</div>
-            </div>
             {workorder.bookingId && (
               <div>
                 <label className="block font-medium text-gray-600 mb-1">รหัสการจอง</label>
-                <div className="text-xs font-mono text-gray-600 bg-gray-50 p-2 rounded">{workorder.bookingId}</div>
+                <div className="text-xs font-mono text-gray-600 bg-gray-50 p-2 rounded break-all">{workorder.bookingId}</div>
               </div>
             )}
             {workorder.createdAt && (
@@ -463,7 +482,6 @@ export default function WorkorderDetailPage({ params }) {
                 <div className="text-xs text-gray-800 bg-gray-50 p-2 rounded">{new Date(workorder.updatedAt).toLocaleString('th-TH')}</div>
               </div>
             )}
-
           </div>
         </div>
       </div>

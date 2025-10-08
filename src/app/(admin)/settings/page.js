@@ -44,6 +44,7 @@ export default function AdminSettingsPage() {
     const [settings, setSettings] = useState({
         allNotifications: { enabled: true },
         reportRecipients: [],
+        lineGroupId: '', // เพิ่ม LINE Group ID
         adminNotifications: { 
             enabled: true,
             // การแจ้งเตือนพื้นฐาน
@@ -135,6 +136,7 @@ export default function AdminSettingsPage() {
                     setSettings(prev => ({
                         ...prev,
                         ...data,
+                        lineGroupId: data.lineGroupId || '', // โหลด LINE Group ID
                         adminNotifications: {
                             ...prev.adminNotifications,
                             ...data.adminNotifications,
@@ -214,7 +216,7 @@ export default function AdminSettingsPage() {
         }
     };
 
-    const handleNotificationChange = async (group, key, value) => {
+    const handleNotificationChange = (group, key, value) => {
         setSettings(prev => {
             const newSettings = { ...prev, [group]: { ...prev[group], [key]: value } };
             // If the master switch is turned off, also turn off the sub-switches visually.
@@ -224,21 +226,6 @@ export default function AdminSettingsPage() {
             }
             return newSettings;
         });
-        
-        try {
-            setIsSaving(true);
-            const { updatedAt, ...notificationData } = settings;
-            const result = await saveNotificationSettings(notificationData);
-            if (result.success) {
-                showToast('บันทึกการตั้งค่าแจ้งเตือนสำเร็จ', 'success');
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
-        } finally {
-            setIsSaving(false);
-        }
     };
     
     const handleSave = async () => {
@@ -369,7 +356,7 @@ export default function AdminSettingsPage() {
                         </div>
                     </SettingsCard>
                     
-                    <SettingsCard title="โหมดและคิวการจอง">
+                    <SettingsCard title="ข้อความแจ้งเตือนลูกค้าและคิวการจอง">
                         <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">ข้อความแจ้งเตือนลูกค้า (แสดงที่หน้าเลือกเวลา)</label>
                             <textarea 
@@ -571,21 +558,36 @@ export default function AdminSettingsPage() {
                 <div className="space-y-6">
                                     <SettingsCard title="การแจ้งเตือน LINE">
                         <Toggle label="เปิดการแจ้งเตือนทั้งหมด" checked={settings.allNotifications.enabled} onChange={(value) => handleNotificationChange('allNotifications', 'enabled', value)}/>
+                        
+                        <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">LINE Group ID (แจ้งเตือนแอดมินไปกลุ่ม)</label>
+                            <input 
+                                type="text" 
+                                value={settings.lineGroupId || ''} 
+                                onChange={e => setSettings(prev => ({...prev, lineGroupId: e.target.value}))} 
+                                className="border rounded-md px-2 py-1 w-full text-sm"
+                                placeholder="Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                ใส่ Group ID ของกลุ่ม LINE ที่ต้องการให้ส่งแจ้งเตือนแอดมินไปด้วย
+                            </p>
+                        </div>
+                        
                         <hr/>
                         <Toggle label="แจ้งเตือน Admin" checked={settings.adminNotifications.enabled} onChange={(value) => handleNotificationChange('adminNotifications', 'enabled', value)} disabled={!settings.allNotifications.enabled} />
                         {settings.adminNotifications.enabled && (
                             <div className="pl-4 border-l-2 ml-4 space-y-2 text-xs">
                                 <div className="font-semibold text-gray-600 mt-2 mb-1">การจองและลูกค้า</div>
                                 <Toggle label="เมื่อมีการจองใหม่" checked={settings.adminNotifications.newBooking} onChange={(value) => handleNotificationChange('adminNotifications', 'newBooking', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled} />
-                                <Toggle label="เมื่อลูกค้ายืนยันนัดหมาย" checked={settings.adminNotifications.customerConfirmed} onChange={(value) => handleNotificationChange('adminNotifications', 'customerConfirmed', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled} />
-                                <Toggle label="เมื่อมีการยกเลิก" checked={settings.adminNotifications.bookingCancelled} onChange={(value) => handleNotificationChange('adminNotifications', 'bookingCancelled', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
-                                <Toggle label="เมื่อมีการชำระเงิน" checked={settings.adminNotifications.paymentReceived} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentReceived', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
+                                {/* <Toggle label="เมื่อลูกค้ายืนยันนัดหมาย" checked={settings.adminNotifications.customerConfirmed} onChange={(value) => handleNotificationChange('adminNotifications', 'customerConfirmed', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled} /> */}
+                                {/* <Toggle label="เมื่อมีการยกเลิก" checked={settings.adminNotifications.bookingCancelled} onChange={(value) => handleNotificationChange('adminNotifications', 'bookingCancelled', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/> */}
+                                {/* <Toggle label="เมื่อมีการชำระเงิน" checked={settings.adminNotifications.paymentReceived} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentReceived', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/> */}
                                 
                                 <div className="font-semibold text-gray-600 mt-2 mb-1">การจัดการงาน</div>
                                 <Toggle label="เมื่อสร้างงานใหม่" checked={settings.adminNotifications.workorderCreated} onChange={(value) => handleNotificationChange('adminNotifications', 'workorderCreated', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                                 <Toggle label="เมื่อมอบหมายงานจากนัดหมาย" checked={settings.adminNotifications.workorderAssigned} onChange={(value) => handleNotificationChange('adminNotifications', 'workorderAssigned', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                                 <Toggle label="เมื่อเปลี่ยนสถานะงาน" checked={settings.adminNotifications.workStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'workStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
-                                <Toggle label="เมื่อเปลี่ยนสถานะชำระเงิน" checked={settings.adminNotifications.paymentStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
+                                {/* <Toggle label="เมื่อเปลี่ยนสถานะชำระเงิน" checked={settings.adminNotifications.paymentStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/> */}
                                 
                                 <div className="font-semibold text-gray-600 mt-2 mb-1">การเก็บเงิน</div>
                                 <Toggle label="เมื่อเปลี่ยนสถานะเก็บเงิน" checked={settings.adminNotifications.collectionStatusChanged} onChange={(value) => handleNotificationChange('adminNotifications', 'collectionStatusChanged', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>

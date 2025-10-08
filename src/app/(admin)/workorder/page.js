@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 // ...existing code...
 import { updateWorkorderStatusByAdmin } from "@/app/actions/workorderActions";
 import { notifyStatusChange, notifyPaymentStatusChange } from "@/app/actions/notificationActions";
-import { sendServiceCompletedFlexMessage } from "@/app/actions/lineFlexActions";
+import { sendServiceCompletedFlexMessage, sendServiceInProgressFlexMessage } from "@/app/actions/lineFlexActions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/app/lib/firebase";
 import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
@@ -196,8 +196,13 @@ export default function WorkorderAdminPage() {
             notifyProcessing: customerNotifySettings.notifyProcessing,
             notifyCompleted: customerNotifySettings.notifyCompleted
           });
-          // ส่ง Flex Message เฉพาะเมื่อเสร็จสิ้น เท่านั้น
-          if (value === 'เสร็จสิ้น' && customerNotifySettings.notifyCompleted) {
+          
+          // ส่ง Flex Message ตามสถานะและการตั้งค่า
+          if (value === 'ช่างกำลังดำเนินการ' && customerNotifySettings.notifyProcessing) {
+            console.log('[LINE FLEX] เรียก sendServiceInProgressFlexMessage', { customerLineId, appointmentData });
+            const result = await sendServiceInProgressFlexMessage(customerLineId, appointmentData);
+            console.log('[LINE FLEX] ผลลัพธ์ sendServiceInProgressFlexMessage', result);
+          } else if (value === 'เสร็จสิ้น' && customerNotifySettings.notifyCompleted) {
             console.log('[LINE FLEX] เรียก sendServiceCompletedFlexMessage', { customerLineId, appointmentData });
             const result = await sendServiceCompletedFlexMessage(customerLineId, appointmentData);
             console.log('[LINE FLEX] ผลลัพธ์ sendServiceCompletedFlexMessage', result);
@@ -208,7 +213,9 @@ export default function WorkorderAdminPage() {
               customerLineId,
               notifyProcessing: customerNotifySettings.notifyProcessing,
               notifyCompleted: customerNotifySettings.notifyCompleted,
-              reason: value === 'ช่างกำลังดำเนินการ' ? 'ไม่ส่ง Flex สำหรับสถานะกำลังดำเนินการ' : 'สถานะไม่ตรงเงื่อนไข'
+              reason: value === 'ช่างกำลังดำเนินการ' ? 'ปิดการแจ้งเตือนสำหรับสถานะกำลังดำเนินการ' : 
+                      value === 'เสร็จสิ้น' ? 'ปิดการแจ้งเตือนสำหรับสถานะเสร็จสิ้น' :
+                      'สถานะไม่ตรงเงื่อนไข (อยู่ในแผนงาน)'
             });
           }
         } else if (field === 'processStatus') {
@@ -435,15 +442,15 @@ export default function WorkorderAdminPage() {
           <div className="flex flex-row gap-4 items-center ml-auto">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">จำนวนช่าง</label>
-              <select
+              <input
+                type="number"
+                min={1}
+                max={50}
                 value={dailyStaffSettings[selectedDateStr] || staffCount}
-                onChange={(e) => handleStaffCountChange(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-2"
-              >
-                {[1,2,3,4,5,6,7,8,9,10].map(num => (
-                  <option key={num} value={num}>{num} คน</option>
-                ))}
-              </select>
+                onChange={e => handleStaffCountChange(Number(e.target.value))}
+                className="border border-gray-300 rounded-md px-3 py-2 w-24 text-center"
+                placeholder="จำนวนช่าง"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Productivity/ช่าง</label>
@@ -671,7 +678,15 @@ export default function WorkorderAdminPage() {
                                   }
                                 }
                               }}
-                              className="border rounded px-2 py-1 w-full text-sm"
+                              className={`px-2 py-1 rounded text-sm font-medium w-full ${
+                                (() => {
+                                  const status = w.type === 'appointment' ? (w.paymentInfo?.paymentStatus || '') : (w.paymentStatus || '');
+                                  if (status === 'เก็บเงินได้แล้ว') return 'bg-green-100 text-green-800';
+                                  if (status === 'ส่งงานเรียบร้อยแล้ว') return 'bg-blue-100 text-blue-800';
+                                  if (status.includes('ติดตามทวงหนี้')) return 'bg-red-100 text-red-800';
+                                  return 'bg-gray-100 text-gray-800';
+                                })()
+                              }`}
                             >
                               <option value="">เลือกสถานะ</option>
                               <option value="ส่งงานเรียบร้อยแล้ว">ส่งงานเรียบร้อยแล้ว</option>

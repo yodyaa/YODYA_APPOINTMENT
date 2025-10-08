@@ -1,7 +1,7 @@
 // src/app/page.js
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 // 1. Import Firebase functions ที่จำเป็น
@@ -17,47 +17,83 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isLiffReady, setIsLiffReady] = useState(false);
   const router = useRouter();
   
   // เพิ่ม LIFF context (optional - ถ้าไม่มี context ให้ใช้ fallback)
   const liffData = useLiffContext() || {};
+  const { profile, loading: liffLoading, error: liffError, liffObject } = liffData;
+
+  // ตรวจสอบว่า LIFF พร้อมใช้งานหรือยัง
+  useEffect(() => {
+    if (!liffLoading && !liffError && (liffObject || window.liff)) {
+      setIsLiffReady(true);
+      console.log('[LOGIN] LIFF is ready');
+    } else if (liffError) {
+      setIsLiffReady(false);
+      console.error('[LOGIN] LIFF error:', liffError);
+    }
+  }, [liffLoading, liffError, liffObject]);
 
   const handleLineLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (typeof window !== 'undefined') {
-        // ตรวจสอบว่าอยู่ใน LINE Browser หรือ Mobile App หรือไม่
-        const userAgent = window.navigator.userAgent;
-        const isInLineApp = userAgent.includes('Line/');
-        
-        console.log('[LINE LOGIN] User Agent:', userAgent);
-        console.log('[LINE LOGIN] Is in LINE app:', isInLineApp);
+      // รอให้ LIFF โหลดเสร็จก่อน
+      if (liffLoading) {
+        setError('กำลังโหลด LINE SDK... กรุณารอสักครู่');
+        setLoading(false);
+        return;
+      }
 
-        if (isInLineApp || process.env.NODE_ENV === 'development') {
-          try {
-            // ตรวจสอบว่ามี LIFF object หรือไม่
-            if (liffData?.liffObject) {
-              // ใช้ LIFF object ที่มีอยู่แล้ว
-              const profile = await liffData.liffObject.getProfile();
-              await checkAdminPermission(profile?.userId);
-            } else if (window.liff && window.liff.isLoggedIn()) {
-              // ใช้ window.liff โดยตรง
-              const profile = await window.liff.getProfile();
-              await checkAdminPermission(profile?.userId);
-            } else {
-              // ไม่มี LIFF หรือยังไม่ login
-              console.log('[LINE LOGIN] No LIFF profile available');
-              setError('ไม่สามารถเข้าถึง LINE Profile ได้ กรุณาลองใหม่อีกครั้ง');
-            }
-          } catch (liffError) {
-            console.error('[LINE LOGIN] LIFF Error:', liffError);
-            setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE');
+      if (liffError) {
+        setError('เกิดข้อผิดพลาดในการโหลด LINE SDK: ' + liffError);
+        setLoading(false);
+        return;
+      }
+
+      if (!isLiffReady) {
+        setError('LINE SDK ยังไม่พร้อม กรุณารอสักครู่...');
+        setLoading(false);
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const liff = liffObject || window.liff;
+          
+          if (!liff) {
+            setError('ไม่พบ LINE SDK กรุณาลองใหม่อีกครั้ง');
+            return;
           }
-        } else {
-          // ไม่อยู่ใน LINE App - แสดงข้อความแนะนำ
-          setError('กรุณาเปิดลิงก์นี้ใน LINE Application เพื่อใช้งานระบบ');
+
+          console.log('[LINE LOGIN] LIFF is ready, checking login status...');
+          
+          // ตรวจสอบว่า login แล้วหรือยัง
+          if (!liff.isLoggedIn()) {
+            console.log('[LINE LOGIN] Not logged in, redirecting to LINE login...');
+            // ถ้ายังไม่ได้ login ให้เปิด LINE login (ทำงานได้ทั้งใน LINE App และ Browser)
+            liff.login({ redirectUri: window.location.href });
+            return;
+          }
+
+          console.log('[LINE LOGIN] Already logged in, getting profile...');
+          
+          // ถ้า login แล้ว ดึง profile (ใช้จาก context ถ้ามี)
+          const userProfile = profile || await liff.getProfile();
+
+          console.log('[LINE LOGIN] Got profile:', userProfile?.userId);
+          
+          if (userProfile?.userId) {
+            await checkAdminPermission(userProfile.userId);
+          } else {
+            setError('ไม่สามารถดึงข้อมูล LINE Profile ได้');
+          }
+          
+        } catch (liffError) {
+          console.error('[LINE LOGIN] LIFF Error:', liffError);
+          setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE: ' + liffError.message);
         }
       }
     } catch (error) {
@@ -137,8 +173,10 @@ export default function LoginPage() {
       // 6. จัดการข้อผิดพลาดในการล็อกอิน
       console.error("Admin login failed:", error.code, error.message);
       let errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = "ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง กรุณาตรวจสอบอีเมลและรหัสผ่านอีกครั้ง";
       }
       setError(errorMessage);
     } finally {
@@ -155,10 +193,35 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold text-center text-gray-700 mb-4">เข้าสู่ระบบผู้ดูแลด้วย LINE</h2>
           <p className="text-sm text-gray-600 text-center mb-4">
             สำหรับผู้ดูแลระบบที่มีสิทธิ์เท่านั้น<br/>
-            <span className="text-xs text-gray-500">กรุณาเปิดใน LINE Application</span>
+            <span className="text-xs text-gray-500">ใช้งานได้ทั้งใน LINE App และ Browser</span>
           </p>
           
-          {error && (
+          {/* แสดงสถานะการโหลด LIFF */}
+          {liffLoading && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-blue-600 text-sm">กำลังโหลด LINE SDK...</p>
+              </div>
+            </div>
+          )}
+          
+          {!liffLoading && isLiffReady && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-green-600 text-sm text-center">✓ LINE SDK พร้อมใช้งาน</p>
+            </div>
+          )}
+          
+          {liffError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-600 text-sm text-center">❌ {liffError}</p>
+            </div>
+          )}
+          
+          {error && !liffLoading && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-sm text-center">{error}</p>
             </div>
@@ -166,10 +229,24 @@ export default function LoginPage() {
           
           <button 
             onClick={handleLineLogin}
-            disabled={loading}
-            className="w-full flex items-center justify-center py-3 px-4 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-green-400"
+            disabled={loading || liffLoading || !isLiffReady}
+            className="w-full flex items-center justify-center py-3 px-4 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {loading ? 'กำลังตรวจสอบสิทธิ์...' : '🟢 เข้าสู่ระบบแอดมินด้วย LINE'}
+            {liffLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                กำลังโหลด LINE SDK...
+              </>
+            ) : loading ? (
+              'กำลังตรวจสอบสิทธิ์...'
+            ) : !isLiffReady ? (
+              '⏳ รอ LINE SDK...'
+            ) : (
+              '🟢 เข้าสู่ระบบแอดมินด้วย LINE'
+            )}
           </button>
         </div>
 

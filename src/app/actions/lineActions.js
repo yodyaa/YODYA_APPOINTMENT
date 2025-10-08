@@ -18,10 +18,19 @@ import {
 } from './adminFlexTemplateActions';
 
 
+// Client สำหรับส่งให้ลูกค้าและแอดมินทั่วไป
 const client = new Client({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET,
 });
+
+// Client สำหรับส่งไปกลุ่มแอดมิน (ถ้ามี token ตัวที่ 2)
+const adminClient = process.env.LINE_ADMIN_CHANNEL_ACCESS_TOKEN 
+  ? new Client({
+      channelAccessToken: process.env.LINE_ADMIN_CHANNEL_ACCESS_TOKEN,
+      channelSecret: process.env.LINE_ADMIN_CHANNEL_SECRET,
+    })
+  : null;
 
 /**
  * Sends a push message to a single LINE user, checking customer notification settings first.
@@ -75,30 +84,49 @@ export async function sendLineMessageToAllAdmins(messageText, notificationType) 
   }
 
   try {
-    // [!code focus start]
     // 1. ดึงข้อมูลแอดมินทั้งหมดเพื่อตรวจสอบ
     const allAdminsSnapshot = await db.collection('admins').get();
     const totalAdmins = allAdminsSnapshot.size;
 
-    // 2. กรองเฉพาะแอดมินที่มี lineUserId
+    // 2. กรองเฉพาะแอดมินที่มี lineUserId ที่ถูกต้อง (ต้องขึ้นต้นด้วย U และยาว 33 ตัวอักษร)
     const adminLineIds = allAdminsSnapshot.docs
       .map(doc => doc.data().lineUserId)
-      .filter(id => id); //กรองเอาเฉพาะ id ที่มีค่า
+      .filter(id => id && typeof id === 'string' && id.startsWith('U') && id.length === 33);
     
     const totalAdminsWithLineId = adminLineIds.length;
+    const invalidIds = allAdminsSnapshot.docs
+      .map(doc => doc.data().lineUserId)
+      .filter(id => id && (!id.startsWith('U') || id.length !== 33));
 
     // 3. แสดง Log เพื่อการตรวจสอบ
-    console.log(`[Admin Notification Check] Total admin users found: ${totalAdmins}`);
-    console.log(`[Admin Notification Check] Admins with lineUserId: ${totalAdminsWithLineId}`);
-    // [!code focus end]
-
-    if (totalAdminsWithLineId === 0) {
-      console.warn("No admins with lineUserId found to notify.");
-      return { success: true, message: "No admins to notify." };
+    console.log(`[Admin Notification] 🔍 Total admin users in database: ${totalAdmins}`);
+    console.log(`[Admin Notification] ✅ Admins with valid LINE ID: ${totalAdminsWithLineId}`);
+    
+    if (invalidIds.length > 0) {
+      console.warn(`[Admin Notification] ⚠️ Found ${invalidIds.length} invalid LINE IDs:`, invalidIds);
     }
     
-    console.log(`[Admin Notification Check] Sending notification to IDs: ${adminLineIds.join(', ')}`);
+    if (totalAdminsWithLineId > 0) {
+      console.log(`[Admin Notification] 📋 Valid Admin LINE IDs: ${adminLineIds.join(', ')}`);
+    } else {
+      console.warn(`[Admin Notification] ⚠️ No admins with valid LINE ID found!`);
+    }
 
+    // 4. ดึง LINE Group ID จาก settings
+    const lineGroupId = settings.lineGroupId || '';
+    
+    if (lineGroupId) {
+      console.log(`[Admin Notification] 📢 LINE Group ID found: ${lineGroupId}`);
+    } else {
+      console.log(`[Admin Notification] ℹ️ No LINE Group ID configured`);
+    }
+
+    // 5. ตรวจสอบว่ามี recipients หรือไม่
+    if (totalAdminsWithLineId === 0 && !lineGroupId) {
+      console.warn("[Admin Notification] ❌ No recipients (admins or group) found to notify.");
+      return { success: true, message: "No recipients to notify." };
+    }
+    
     // Use Flex message if available, otherwise fallback to text
     let messageObject;
     if (typeof messageText === 'object' && messageText.type === 'flex') {
@@ -107,7 +135,21 @@ export async function sendLineMessageToAllAdmins(messageText, notificationType) 
       messageObject = { type: 'text', text: messageText };
     }
     
-    await client.multicast(adminLineIds, [messageObject]);
+    // 6. ส่งข้อความไปยังแอดมิน (ใช้ multicast)
+    if (totalAdminsWithLineId > 0) {
+      console.log(`[Admin Notification] 🚀 Sending to ${totalAdminsWithLineId} admin(s)`);
+      await client.multicast(adminLineIds, [messageObject]);
+      console.log(`[Admin Notification] ✅ Sent to admins successfully`);
+    }
+    
+    // 7. ส่งข้อความไปยังกลุ่ม (ใช้ pushMessage แยก)
+    if (lineGroupId && lineGroupId.startsWith('C')) {
+      console.log(`[Admin Notification] 📤 Sending to group: ${lineGroupId}`);
+      // ใช้ adminClient ถ้ามี token ตัวที่ 2, ไม่งั้นใช้ client ธรรมดา
+      const groupClient = adminClient || client;
+      await groupClient.pushMessage(lineGroupId, messageObject);
+      console.log(`[Admin Notification] ✅ Sent to group successfully${adminClient ? ' (using admin channel)' : ' (using default channel)'}`);
+    }
 
     return { success: true };
 

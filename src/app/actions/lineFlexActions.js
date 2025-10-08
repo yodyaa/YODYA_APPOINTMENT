@@ -3,6 +3,7 @@ import {
     createReviewFlexTemplate,
     createAppointmentConfirmedFlexTemplate,
     createServiceCompletedFlexTemplate,
+    createServiceInProgressFlexTemplate,
     createAppointmentCancelledFlexTemplate,
     createNewBookingFlexTemplate,
     createPaymentConfirmationFlexTemplate,
@@ -103,6 +104,14 @@ export async function sendAppointmentConfirmedFlexMessage(userId, appointmentDat
 export async function sendServiceCompletedFlexMessage(userId, appointmentData) {
     const flexTemplate = await createServiceCompletedFlexTemplate(appointmentData);
     return sendFlexMessage(userId, flexTemplate, 'Service Completed');
+}
+
+/**
+ * Sends a Service In Progress Flex Message.
+ */
+export async function sendServiceInProgressFlexMessage(userId, appointmentData) {
+    const flexTemplate = await createServiceInProgressFlexTemplate(appointmentData);
+    return sendFlexMessage(userId, flexTemplate, 'Service In Progress');
 }
 
 /**

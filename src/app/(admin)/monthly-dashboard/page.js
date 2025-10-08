@@ -179,16 +179,24 @@ export default function MonthlyDashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-2">
-            {/* Header days */}
-            {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map(day => (
-              <div key={day} className="p-2 text-center font-semibold text-gray-600 bg-gray-100 rounded">
-                {day}
+            {/* Header days: Sunday first, color-coded */}
+            {[
+              { label: 'อา', color: 'bg-red-200 text-red-700' },
+              { label: 'จ', color: 'bg-yellow-200 text-yellow-700' },
+              { label: 'อ', color: 'bg-pink-200 text-pink-700' },
+              { label: 'พ', color: 'bg-green-200 text-green-700' },
+              { label: 'พฤ', color: 'bg-orange-200 text-orange-700' },
+              { label: 'ศ', color: 'bg-blue-200 text-blue-700' },
+              { label: 'ส', color: 'bg-purple-200 text-purple-700' }
+            ].map(day => (
+              <div key={day.label} className={`p-2 text-center font-semibold rounded ${day.color}`}>
+                {day.label}
               </div>
             ))}
-            
-            {/* Calendar days */}
+
+            {/* Calendar days: adjust so Sunday is first */}
             {monthlyData.map((day) => {
-              console.log('DEBUG: day.date =', day.date, 'day.dayNumber =', day.dayNumber);
+              // day.dayName: 'อา', 'จ', ...
               return (
                 <div
                   key={day.date}

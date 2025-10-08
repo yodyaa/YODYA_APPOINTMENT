@@ -802,6 +802,114 @@ export async function createServiceCompletedFlexTemplate(appointmentData) {
 }
 
 /**
+ * สร้าง Flex Message สำหรับสถานะ "กำลังดำเนินการ" (แจ้งลูกค้า)
+ */
+export async function createServiceInProgressFlexTemplate(appointmentData) {
+    const { id, serviceInfo, customerInfo, appointmentInfo } = appointmentData;
+    const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
+    const serviceName = serviceInfo?.name || appointmentInfo?.serviceName || 'บริการของคุณ';
+    const beauticianName = appointmentInfo?.beauticianName || 'ทีมช่างของเรา';
+    
+    return {
+        type: "flex",
+        altText: `🌿 ช่างกำลังดำเนินการบริการของคุณ`,
+        contents: {
+            type: "bubble",
+            size: "mega",
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "text",
+                        text: "🌿 กำลังดำเนินการ",
+                        weight: "bold",
+                        size: "lg",
+                        color: "#F57C00",
+                        align: "center",
+                        margin: "none"
+                    },
+                    {
+                        type: "separator",
+                        margin: "lg",
+                        color: "#FFE0B2"
+                    },
+                    {
+                        type: "text",
+                        text: `เรียน ${customerName}`,
+                        weight: "bold",
+                        size: "md",
+                        color: "#333333",
+                        margin: "lg"
+                    },
+                    {
+                        type: "text",
+                        text: `ทีมช่างของเรากำลังดำเนินการบริการ "${serviceName}" ให้คุณอยู่ค่ะ`,
+                        size: "md",
+                        color: "#F57C00",
+                        weight: "bold",
+                        wrap: true,
+                        margin: "sm"
+                    },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                            {
+                                type: "box",
+                                layout: "horizontal",
+                                contents: [
+                                    {
+                                        type: "text",
+                                        text: "👨‍🌾 ช่างผู้ดำเนินการ",
+                                        size: "sm",
+                                        color: "#666666",
+                                        flex: 0
+                                    },
+                                    {
+                                        type: "text",
+                                        text: beauticianName,
+                                        weight: "bold",
+                                        size: "sm",
+                                        color: "#174D27",
+                                        align: "end"
+                                    }
+                                ],
+                                spacing: "sm"
+                            }
+                        ],
+                        margin: "lg",
+                        paddingAll: "12px",
+                        backgroundColor: "#FFF3E0",
+                        cornerRadius: "8px"
+                    },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                            {
+                                type: "text",
+                                text: "เราจะทำงานด้วยความใส่ใจและคุณภาพเพื่อให้สวนของคุณสวยงาม 🌳",
+                                size: "sm",
+                                color: "#F57C00",
+                                wrap: true,
+                                align: "center"
+                            }
+                        ],
+                        margin: "lg",
+                        paddingAll: "12px",
+                        backgroundColor: "#FFF3E0",
+                        cornerRadius: "8px"
+                    }
+                ],
+                spacing: "md",
+                paddingAll: "20px"
+            }
+        }
+    };
+}
+
+/**
  * สร้าง Flex Message สำหรับการยกเลิกการจอง (แจ้งลูกค้า)
  */
 export async function createAppointmentCancelledFlexTemplate(appointmentData, reason) {

@@ -117,42 +117,42 @@ export default function MyAppointmentsPage() {
         <div>
             <CustomerHeader showBackButton={false} showActionButtons={true} />
             <div className="px-4 pb-4 space-y-5">
-            <Notification {...notification} />
-            <ConfirmationModal
-                show={!!appointmentToCancel}
-                title="ยืนยันการยกเลิก"
-                message={`คุณต้องการยกเลิกการนัดหมายบริการ ${appointmentToCancel?.serviceInfo.name} ใช่หรือไม่?`}
-                onConfirm={confirmCancelAppointment}
-                onCancel={() => setAppointmentToCancel(null)}
-                isProcessing={isCancelling}
-            />
-            <QrCodeModal
-                show={showQrModal}
-                onClose={() => setShowQrModal(false)}
-                appointmentId={selectedAppointmentId}
-            />
-            
-            <div className="py-4 space-y-4">
-                <div className="font-bold text-md text-gray-700">นัดหมายของฉัน</div>
-                {loading ? (
-                    <div className="text-center text-gray-500 pt-10">กำลังโหลดรายการนัดหมาย...</div>
-                ) : appointments.length === 0 ? (
-                    <div className="text-center text-gray-500 pt-10 bg-white p-8 rounded-xl shadow-sm">
-                        <p className="font-semibold">ไม่มีรายการนัดหมายที่กำลังดำเนินอยู่</p>
-                    </div>
-                ) : (
-                    appointments.map((job) => (
-                        <AppointmentCard
-                            key={job.id}
-                            job={job}
-                            onQrCodeClick={handleQrCodeClick}
-                            onCancelClick={handleCancelClick}
-                            onConfirmClick={handleConfirmClick}
-                            isConfirming={isConfirming}
-                        />
-                    ))
-                )}
-            </div>
+                <Notification {...notification} />
+                <ConfirmationModal
+                    show={!!appointmentToCancel}
+                    title="ยืนยันการยกเลิก"
+                    message={`คุณต้องการยกเลิกการนัดหมายบริการ ${appointmentToCancel?.serviceInfo.name} ใช่หรือไม่?`}
+                    onConfirm={confirmCancelAppointment}
+                    onCancel={() => setAppointmentToCancel(null)}
+                    isProcessing={isCancelling}
+                />
+                <QrCodeModal
+                    show={showQrModal}
+                    onClose={() => setShowQrModal(false)}
+                    appointmentId={selectedAppointmentId}
+                />
+
+                <div className="py-4 space-y-4">
+                    <div className="font-bold text-md text-gray-700">นัดหมายของฉัน</div>
+                    {loading ? (
+                        <div className="text-center text-gray-500 pt-10">กำลังโหลดรายการนัดหมาย...</div>
+                    ) : appointments.length === 0 ? (
+                        <div className="text-center text-gray-500 pt-10 bg-white p-8 rounded-xl shadow-sm">
+                            <p className="font-semibold">ไม่มีรายการนัดหมายที่กำลังดำเนินอยู่</p>
+                        </div>
+                    ) : (
+                        appointments.map((job) => (
+                            <AppointmentCard
+                                key={job.id}
+                                job={job}
+                                onQrCodeClick={handleQrCodeClick}
+                                onCancelClick={handleCancelClick}
+                                onConfirmClick={handleConfirmClick}
+                                isConfirming={isConfirming}
+                            />
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
