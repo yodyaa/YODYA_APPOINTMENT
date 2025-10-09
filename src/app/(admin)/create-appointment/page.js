@@ -491,7 +491,9 @@ export default function CreateAppointmentPage() {
 
         // ตรวจสอบความพร้อมของช่วงเวลาอีกครั้งก่อนสร้างการนัดหมาย
         const reCheckSlots = slotCounts[appointmentTime] || 0;
-        const maxSlots = bookingSettings.useBeautician ? beauticians.length : bookingSettings.totalBeauticians;
+        // หาข้อมูล queue ที่ตรงกับเวลาที่เลือก เพื่อใช้ค่า count ที่ถูกต้อง
+        const selectedQueue = bookingSettings.timeQueues.find(q => q.time === appointmentTime);
+        const maxSlots = bookingSettings.useBeautician ? beauticians.length : (selectedQueue?.count || bookingSettings.totalBeauticians);
         if (reCheckSlots >= maxSlots) {
             showToast('ช่วงเวลาที่เลือกเต็มแล้ว กรุณาเลือกเวลาใหม่', 'error');
             return;
@@ -863,6 +865,7 @@ export default function CreateAppointmentPage() {
                                                         const max = bookingSettings.useBeautician ? beauticians.length : (queue.count || bookingSettings.totalBeauticians);
                                                         const booked = slotCounts[slot] || 0;
                                                         const isFull = booked >= max;
+                                                        const available = max - booked;
                                                         return (
                                                             <button
                                                                 key={slot}
@@ -872,9 +875,13 @@ export default function CreateAppointmentPage() {
                                                                     ${appointmentTime === slot ? 'bg-primary text-white shadow-lg' : 'bg-white text-primary border border-purple-100 hover:bg-purple-50'}
                                                                     ${isFull ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
                                                                 disabled={isFull}
-                                                                title={isFull ? 'คิวเต็ม' : ''}
+                                                                title={isFull ? 'คิวเต็ม' : `ว่าง ${available}/${max} คิว`}
                                                             >
-                                                                {slot} {isFull && <span className="text-xs">(เต็ม)</span>}
+                                                                <div className="flex flex-col items-center">
+                                                                    <span>{slot}</span>
+                                                                    {!isFull && <span className="text-xs opacity-75">({available}/{max})</span>}
+                                                                    {isFull && <span className="text-xs">(เต็ม)</span>}
+                                                                </div>
                                                             </button>
                                                         );
                                                     })}
