@@ -37,15 +37,14 @@ export default function CreateAppointmentPage() {
     const [services, setServices] = useState([]);
     const [beauticians, setBeauticians] = useState([]);
     const [unavailableBeauticianIds, setUnavailableBeauticianIds] = useState(new Set());
-    // State สำหรับการตั้งค่าการจอง
     const defaultWeeklySchedule = {
-        0: { isOpen: false },  // อาทิตย์
-        1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },  // จันทร์
-        2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },  // อังคาร
-        3: { isOpen: true, openTime: '09:00', closeTime: '17:00' },  // พุธ
-        4: { isOpen: true, openTime: '09:00', closeTime: '17:00' },  // พฤหัส
-        5: { isOpen: true, openTime: '09:00', closeTime: '17:00' },  // ศุกร์
-        6: { isOpen: false }   // เสาร์
+        0: { isOpen: false },
+        1: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        2: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        3: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        4: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        5: { isOpen: true, openTime: '09:00', closeTime: '17:00' },
+        6: { isOpen: false }
     };
 
     const [bookingSettings, setBookingSettings] = useState({
@@ -63,8 +62,8 @@ export default function CreateAppointmentPage() {
     const [existingCustomer, setExistingCustomer] = useState(null);
     const [isCheckingCustomer, setIsCheckingCustomer] = useState(false);
     const [timeQueueFull, setTimeQueueFull] = useState(false);
-    const [isDayBusy, setIsDayBusy] = useState(false); // สถานะว่าง/ไม่ว่างของวัน
-    const [busyDays, setBusyDays] = useState({}); // { 'yyyy-MM-dd': true }
+    const [isDayBusy, setIsDayBusy] = useState(false);
+    const [busyDays, setBusyDays] = useState({});
     const [activeMonth, setActiveMonth] = useState(() => {
         const today = new Date();
         return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -85,13 +84,11 @@ export default function CreateAppointmentPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // โหลดข้อมูลพื้นฐาน
                 const [settingsDoc, bookingSettingsDoc] = await Promise.all([
                     getDoc(doc(db, 'settings', 'general')),
                     getDoc(doc(db, 'settings', 'booking'))
                 ]);
 
-                // โหลดการตั้งค่าการจอง
                 if (bookingSettingsDoc.exists()) {
                     const settings = bookingSettingsDoc.data();
                     setBookingSettings(prev => {
@@ -116,7 +113,6 @@ export default function CreateAppointmentPage() {
         };
         fetchData();
 
-        // ติดตามการเปลี่ยนแปลงของ services แบบ realtime (แสดงทั้งหมด)
         const servicesQuery = query(
             collection(db, 'services'),
             orderBy('serviceName')
@@ -124,28 +120,18 @@ export default function CreateAppointmentPage() {
         const unsubscribeServices = onSnapshot(
             servicesQuery, 
             (snapshot) => {
-                console.log('Services updated:', snapshot.docs.length);
                 const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                // เรียงลำดับ: รายการโปรดก่อน (isFavorite: true) แล้วตามด้วยชื่อบริการ
                 const sortedServices = allServices.sort((a, b) => {
-                    // ถ้า a เป็นรายการโปรด แต่ b ไม่ใช่ ให้ a อยู่ข้างหน้า
                     if (a.isFavorite && !b.isFavorite) return -1;
-                    // ถ้า b เป็นรายการโปรด แต่ a ไม่ใช่ ให้ b อยู่ข้างหน้า
                     if (!a.isFavorite && b.isFavorite) return 1;
-                    // ถ้าทั้งคู่เป็นหรือไม่เป็นรายการโปรดเหมือนกัน ให้เรียงตามชื่อบริการ
                     return (a.serviceName || '').localeCompare(b.serviceName || '', 'th');
                 });
-                
                 setServices(sortedServices);
             },
             (error) => {
                 console.error('Services onSnapshot error:', error);
-                // Fallback: โหลดแบบปกติถ้า onSnapshot ไม่ทำงาน
                 getDocs(servicesQuery).then(snapshot => {
-                    console.log('Services fallback loaded:', snapshot.docs.length);
                     const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // เรียงลำดับเหมือนกัน
                     const sortedServices = allServices.sort((a, b) => {
                         if (a.isFavorite && !b.isFavorite) return -1;
                         if (!a.isFavorite && b.isFavorite) return 1;
@@ -156,7 +142,6 @@ export default function CreateAppointmentPage() {
             }
         );
 
-        // ติดตามการเปลี่ยนแปลงของ beauticians แบบ realtime
         const beauticiansQuery = query(
             collection(db, 'beauticians'),
             where('status', '==', 'available'),
@@ -165,25 +150,21 @@ export default function CreateAppointmentPage() {
         const unsubscribeBeauticians = onSnapshot(
             beauticiansQuery,
             (snapshot) => {
-                console.log('Beauticians updated:', snapshot.docs.length);
                 setBeauticians(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             },
             (error) => {
                 console.error('Beauticians onSnapshot error:', error);
-                // Fallback: โหลดแบบปกติถ้า onSnapshot ไม่ทำงาน
                 getDocs(beauticiansQuery).then(snapshot => {
-                    console.log('Beauticians fallback loaded:', snapshot.docs.length);
                     setBeauticians(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 }).catch(err => console.error('Beauticians fallback error:', err));
             }
         );
 
-        // Cleanup listeners เมื่อ component unmount
         return () => {
             unsubscribeServices();
             unsubscribeBeauticians();
         };
-    }, []); // โหลดข้อมูลเฉพาะตอน mount
+    }, []);
 
     useEffect(() => {
         if (!appointmentDate) return;
@@ -195,11 +176,8 @@ export default function CreateAppointmentPage() {
             where('status', 'in', ['pending', 'confirmed', 'awaiting_confirmation'])
         );
 
-        // ใช้ onSnapshot เพื่อ realtime updates
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const appointmentsForDay = querySnapshot.docs.map(doc => doc.data());
-
-            // คำนวณจำนวนการจองในแต่ละช่วงเวลา
             const counts = {};
             appointmentsForDay.forEach(appt => {
                 if (appt.time) {
@@ -208,7 +186,6 @@ export default function CreateAppointmentPage() {
             });
             setSlotCounts(counts);
 
-            // อัปเดตช่างที่ไม่ว่างในช่วงเวลาที่เลือก
             if (appointmentTime) {
                 const unavailableIds = new Set(
                     appointmentsForDay
@@ -217,7 +194,6 @@ export default function CreateAppointmentPage() {
                 );
                 setUnavailableBeauticianIds(unavailableIds);
 
-                // ถ้าช่างที่เลือกไว้ไม่ว่าง ให้ยกเลิกการเลือก
                 if (selectedBeauticianId && unavailableIds.has(selectedBeauticianId)) {
                     setSelectedBeauticianId('');
                     showToast('ช่างที่เลือกไม่ว่างในเวลานี้แล้ว', 'warning', 'โปรดเลือกช่างใหม่');
@@ -227,14 +203,10 @@ export default function CreateAppointmentPage() {
             }
         });
 
-        // ดึงสถานะ busy ของวันจาก busyDays
         setIsDayBusy(busyDays[dateStr] ?? false);
-
-        // Cleanup listener เมื่อ component unmount หรือ appointmentDate เปลี่ยน
         return () => unsubscribe();
     }, [appointmentDate, appointmentTime, selectedBeauticianId, showToast, busyDays]);
 
-    // โหลด busy status ของทุกวันในเดือนที่แสดง
     useEffect(() => {
         const fetchMonthBusyDays = async () => {
             const year = activeMonth.getFullYear();
@@ -292,7 +264,6 @@ export default function CreateAppointmentPage() {
                 if (customerDoc.exists()) {
                     const customer = { id: customerDoc.id, ...customerDoc.data() };
                     setExistingCustomer(customer);
-                    // เติมข้อมูลที่อยู่อัตโนมัติถ้ามี
                     if (customer.address && !customerInfo.address) {
                         setCustomerInfo(prev => ({ ...prev, address: customer.address }));
                     }
@@ -309,7 +280,6 @@ export default function CreateAppointmentPage() {
                     const customerData = snapshot.docs[0];
                     const customer = { id: customerData.id, ...customerData.data() };
                     setExistingCustomer(customer);
-                    // เติมข้อมูลที่อยู่อัตโนมัติถ้ามี
                     if (customer.address && !customerInfo.address) {
                         setCustomerInfo(prev => ({ ...prev, address: customer.address }));
                     }
@@ -325,7 +295,6 @@ export default function CreateAppointmentPage() {
         }
     };
 
-    // ตรวจสอบลูกค้าเฉพาะเมื่อเบอร์โทรครบ 9 หลัก หรือมี lineUserId (แต่ไม่แจ้งเตือนถ้ายังไม่ครบ)
     useEffect(() => {
         const shouldCheck = (customerInfo.phone && customerInfo.phone.length >= 9) || (customerInfo.lineUserId && customerInfo.lineUserId.length > 0);
         if (!shouldCheck) {
@@ -338,47 +307,25 @@ export default function CreateAppointmentPage() {
         return () => clearTimeout(timeoutId);
     }, [customerInfo.phone, customerInfo.lineUserId]);
 
-    // Reset เวลาและช่างเมื่อเปลี่ยนวันที่
     useEffect(() => {
         setAppointmentTime('');
         setSelectedBeauticianId('');
     }, [appointmentDate]);
 
     const getThaiDateString = (date) => {
-        // สร้างวันที่ใหม่ที่ 7:00 น. (เวลาไทย) ของวันนั้น
         const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 7, 0, 0);
-        // แปลงเป็น format YYYY-MM-DD
         return format(localDate, 'yyyy-MM-dd');
     };
 
     const isDateOpen = (date) => {
         const dayOfWeek = date.getDay();
         const daySchedule = bookingSettings.weeklySchedule[dayOfWeek];
-
-        // ถ้าไม่มีการตั้งค่าวันทำการหรือวันนั้นถูกตั้งค่าเป็นวันปิด
         if (!daySchedule || !daySchedule.isOpen) {
             return false;
         }
-
-        // ตรวจสอบวันหยุดพิเศษ
         const dateStr = getThaiDateString(date);
         const isHoliday = bookingSettings.holidayDates.some(holiday => holiday.date === dateStr);
-
         return !isHoliday;
-    };
-
-    const isTimeInBusinessHours = (timeSlot) => {
-        if (!appointmentDate) return true;
-        const dayOfWeek = new Date(appointmentDate).getDay();
-        const daySchedule = bookingSettings.weeklySchedule[dayOfWeek];
-
-        if (!daySchedule || !daySchedule.isOpen) return false;
-
-        const slotTime = timeSlot.replace(':', '');
-        const openTime = daySchedule.openTime?.replace(':', '') || '0900';
-        const closeTime = daySchedule.closeTime?.replace(':', '') || '1700';
-
-        return slotTime >= openTime && slotTime <= closeTime;
     };
 
     const isDateDisabled = (date) => {
@@ -386,16 +333,10 @@ export default function CreateAppointmentPage() {
     };
 
     const checkHolidayDate = (date) => {
-        // สร้างวันที่ในรูปแบบ YYYY-MM-DD
         const dateString = getThaiDateString(date);
-
-        // ตรวจสอบวันหยุดพิเศษ
         const specialHoliday = bookingSettings.holidayDates?.find(h => h.date === dateString);
-
-        // ตรวจสอบวันหยุดประจำสัปดาห์ (อาทิตย์=0, เสาร์=6)
         const dayOfWeek = date.getDay();
         const isWeekendHoliday = !bookingSettings.weeklySchedule?.[dayOfWeek]?.isOpen;
-
         return {
             isHoliday: !!specialHoliday || isWeekendHoliday,
             holidayInfo: specialHoliday || (isWeekendHoliday ? { reason: 'วันหยุดประจำสัปดาห์' } : null)
@@ -404,56 +345,28 @@ export default function CreateAppointmentPage() {
 
     const availableTimeSlots = useMemo(() => {
         if (!appointmentDate || !bookingSettings?.timeQueues) {
-            console.log('No appointment date or timeQueues:', { appointmentDate, timeQueues: bookingSettings?.timeQueues });
             return [];
         }
-
         const selectedDate = new Date(appointmentDate);
         const dayOfWeek = selectedDate.getDay();
         const daySchedule = bookingSettings.weeklySchedule?.[dayOfWeek];
-
-        console.log('Checking time slots for:', {
-            selectedDate,
-            dayOfWeek,
-            daySchedule,
-            timeQueues: bookingSettings.timeQueues,
-            weeklySchedule: bookingSettings.weeklySchedule
-        });
-
-        // ถ้าวันนี้เป็นวันหยุด ไม่ต้องแสดงช่วงเวลา
         const holiday = checkHolidayDate(selectedDate);
-        if (holiday.isHoliday) {
-            console.log('Holiday detected:', holiday);
+        if (holiday.isHoliday || !daySchedule?.isOpen) {
             return [];
         }
-
-        // เช็คว่าวันนี้เปิดทำการหรือไม่
-        if (!daySchedule?.isOpen) {
-            console.log('Day is not open:', dayOfWeek);
-            return [];
-        }
-
-        // เช็คเวลาทำการ
         const openTime = daySchedule?.openTime?.replace(':', '') || '0900';
         const closeTime = daySchedule?.closeTime?.replace(':', '') || '1700';
-
-        console.log('Business hours:', { openTime, closeTime, daySchedule });
-
-        // กรองเวลาที่อยู่ในช่วงเวลาทำการ
         const slots = bookingSettings.timeQueues
-            .filter(queue => {
-                if (!queue?.time) return false;
-                const slotTime = queue.time.replace(':', '');
+            .filter(q => {
+                if (!q?.time) return false;
+                const slotTime = q.time.replace(':', '');
                 return slotTime >= openTime && slotTime <= closeTime;
             })
             .map(queue => queue.time)
             .sort();
-
-        console.log('Available time slots:', slots);
         setTimeQueueFull(slots.length === 0);
         return slots;
-    }, [appointmentDate, bookingSettings]);
-
+    }, [appointmentDate, bookingSettings, checkHolidayDate]);
 
     const handleServiceChange = (e) => {
         setSelectedServiceId(e.target.value);
@@ -475,30 +388,40 @@ export default function CreateAppointmentPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!selectedServiceId || (useBeautician && !selectedBeauticianId) || !appointmentDate || !appointmentTime || !customerInfo.fullName || !customerInfo.phone || !customerInfo.address) {
             showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (รวมถึงที่อยู่)', 'error');
             return;
         }
-
-        // ตรวจสอบเวลาจองล่วงหน้าอย่างน้อย 1 ชั่วโมง
         const now = new Date();
         const bookingDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
         if (bookingDateTime - now < 60 * 60 * 1000) {
             showToast('ต้องจองล่วงหน้าอย่างน้อย 1 ชั่วโมง', 'error');
             return;
         }
-
-        // ตรวจสอบความพร้อมของช่วงเวลาอีกครั้งก่อนสร้างการนัดหมาย
+        
+        // [!code focus start]
+        // ตรรกะการตรวจสอบสล็อตที่แก้ไขแล้ว
         const reCheckSlots = slotCounts[appointmentTime] || 0;
-        const maxSlots = bookingSettings.useBeautician ? beauticians.length : bookingSettings.totalBeauticians;
+        let maxSlots = 50; // Default
+        
+        if (bookingSettings.timeQueues && bookingSettings.timeQueues.length > 0) {
+            const specificQueue = bookingSettings.timeQueues.find(q => q.time === appointmentTime);
+            if (specificQueue && typeof specificQueue.count === 'number') {
+                maxSlots = specificQueue.count;
+            } else if (bookingSettings.totalBeauticians) {
+                maxSlots = Number(bookingSettings.totalBeauticians);
+            }
+        } else if (bookingSettings.totalBeauticians) {
+            maxSlots = Number(bookingSettings.totalBeauticians);
+        }
+        
         if (reCheckSlots >= maxSlots) {
             showToast('ช่วงเวลาที่เลือกเต็มแล้ว กรุณาเลือกเวลาใหม่', 'error');
             return;
         }
+        // [!code focus end]
 
         setIsSubmitting(true);
-
         try {
             const customerResult = await findOrCreateCustomer({
                 fullName: customerInfo.fullName,
@@ -523,7 +446,6 @@ export default function CreateAppointmentPage() {
             const appointmentData = {
                 userId: customerResult.customerId,
                 userInfo: { displayName: customerInfo.fullName },
-                // เริ่มต้นด้วย awaiting_confirmation เพื่อให้ลูกค้ายืนยันการจอง
                 status: 'awaiting_confirmation',
                 customerInfo: {
                     fullName: customerInfo.fullName || '',
@@ -570,20 +492,17 @@ export default function CreateAppointmentPage() {
                 serviceId: selectedService.id || '',
                 beauticianId: useBeautician ? (beautician?.id || '') : '',
                 createdAt: new Date(),
-                // เพิ่มข้อมูลผู้สร้าง (admin)
                 createdBy: {
                     type: 'admin',
                     adminId: profile?.uid,
                     adminName: profile?.displayName || 'Admin'
                 },
-                // บันทึกว่าต้องการแจ้งเตือนลูกค้าหรือไม่
                 needsCustomerNotification: true,
             };
 
             const result = await createAppointmentWithSlotCheck(appointmentData);
             if (result.success) {
                 showToast('สร้างการนัดหมายสำเร็จ! รอการยืนยันจากลูกค้า', 'success');
-                // เพิ่มขั้นตอนการแจ้งเตือนลูกค้าเพื่อยืนยันการจอง
                 showToast('ระบบจะส่งการแจ้งเตือนให้ลูกค้ายืนยันการจอง', 'info');
                 router.push('/workorder/create');
             } else {
@@ -601,6 +520,7 @@ export default function CreateAppointmentPage() {
         return <div className="text-center p-10">กำลังโหลดข้อมูล...</div>;
     }
 
+    // ... (ส่วน UI ไม่มีการเปลี่ยนแปลง)
     return (
         <div className="container mx-auto p-4 md:p-8">
             <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
@@ -763,8 +683,6 @@ export default function CreateAppointmentPage() {
                                                 const isToday = date.toDateString() === today.toDateString();
                                                 const { isHoliday, holidayInfo } = checkHolidayDate(date);
                                                 const isDisabled = isPast || isDateDisabled(date);
-
-                                                // ตรวจสอบสถานะ busy ของวันจาก busyDays
                                                 const isBusyDay = !!busyDays[dateString];
 
                                                 days.push(
@@ -808,7 +726,6 @@ export default function CreateAppointmentPage() {
                                                         `}
                                                     >
                                                         {day}
-                                                        {/* Busy day: only red color, no text */}
                                                     </button>
                                                 );
                                             }
@@ -854,31 +771,11 @@ export default function CreateAppointmentPage() {
                                                 <p className="text-yellow-500 text-sm mt-1">กรุณาเลือกวันอื่น</p>
                                             </div>
                                         ) : (
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {bookingSettings.timeQueues
-                                                    .filter(q => q.time)
-                                                    .sort((a, b) => String(a.time).localeCompare(String(b.time)))
-                                                    .map(queue => {
-                                                        const slot = queue.time;
-                                                        const max = bookingSettings.useBeautician ? beauticians.length : (queue.count || bookingSettings.totalBeauticians);
-                                                        const booked = slotCounts[slot] || 0;
-                                                        const isFull = booked >= max;
-                                                        return (
-                                                            <button
-                                                                key={slot}
-                                                                type="button"
-                                                                onClick={() => !isFull && setAppointmentTime(slot)}
-                                                                className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors
-                                                                    ${appointmentTime === slot ? 'bg-primary text-white shadow-lg' : 'bg-white text-primary border border-purple-100 hover:bg-purple-50'}
-                                                                    ${isFull ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
-                                                                disabled={isFull}
-                                                                title={isFull ? 'คิวเต็ม' : ''}
-                                                            >
-                                                                {slot} {isFull && <span className="text-xs">(เต็ม)</span>}
-                                                            </button>
-                                                        );
-                                                    })}
-                                            </div>
+                                            <TimeSlotGrid 
+                                                timeSlots={availableTimeSlots}
+                                                selectedTime={appointmentTime}
+                                                onSelect={setAppointmentTime}
+                                            />
                                         )}
                                     </div>
                                 )}
