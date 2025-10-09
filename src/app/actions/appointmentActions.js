@@ -1,3 +1,5 @@
+// src/app/actions/appointmentActions.js
+
 'use server';
 
 import { db } from '@/app/lib/firebaseAdmin';
@@ -11,58 +13,56 @@ import {
     sendNewBookingFlexMessage,
     sendPaymentConfirmationFlexMessage
 } from '@/app/actions/lineFlexActions';
-// Removed telegram logic: sendTelegramMessageToAdmin
 import { findOrCreateCustomer } from '@/app/actions/customerActions';
 import { createOrUpdateCalendarEvent, deleteCalendarEvent } from './calendarActions';
-import * as settingsActions from '@/app/actions/settingsActions'; // Use the central settings function
+import * as settingsActions from '@/app/actions/settingsActions';
 
-
-/**
- * Creates a new appointment, checking for slot availability.
- */
 export async function createAppointmentWithSlotCheck(appointmentData) {
     const { date, time, serviceId, gardenerId, userId } = appointmentData;
     if (!date || !time) return { success: false, error: 'กรุณาระบุวันและเวลา' };
+
     try {
         const settingsRef = db.collection('settings').doc('booking');
         const settingsSnap = await settingsRef.get();
         
-    let maxSlot = 50;
-    let useGardener = false;
+        let maxSlot = 50; // กำหนดค่าเริ่มต้นเป็น 50
+        let useGardener = false;
         
         if (settingsSnap.exists) {
             const data = settingsSnap.data();
             useGardener = !!data.useGardener;
-            if (data.totalGardeners) {
-                maxSlot = Number(data.totalGardeners);
-            }
+            // ตรวจสอบค่าจาก timeQueues ก่อน
             if (Array.isArray(data.timeQueues) && data.timeQueues.length > 0) {
                 const specificQueue = data.timeQueues.find(q => q.time === time);
                 if (specificQueue && typeof specificQueue.count === 'number') {
                     maxSlot = specificQueue.count;
+                } else if (data.totalGardeners) {
+                    // ถ้าไม่เจอใน timeQueues ให้ใช้ totalGardeners
+                    maxSlot = Number(data.totalGardeners);
                 }
+            } else if (data.totalGardeners) {
+                // กรณีไม่มี timeQueues เลย
+                maxSlot = Number(data.totalGardeners);
             }
         }
 
-        let queryConditions = [
-            ['date', '==', date],
-            ['time', '==', time],
-            ['status', 'in', ['pending', 'confirmed', 'awaiting_confirmation']]
-        ];
+        let q = db.collection('appointments')
+            .where('date', '==', date)
+            .where('time', '==', time)
+            .where('status', 'in', ['pending', 'confirmed', 'awaiting_confirmation']);
         
+        // [!code focus start]
+        // ตรรกะที่แก้ไข:
+        // ถ้ามีการระบุช่าง ให้ตรวจสอบเฉพาะคิวของช่างคนนั้น และจำกัดให้จองได้แค่ 1
         if (useGardener && gardenerId && gardenerId !== 'auto-assign') {
-            queryConditions.push(['gardenerId', '==', gardenerId]);
-            maxSlot = 50; 
+            q = q.where('gardenerId', '==', gardenerId);
+            maxSlot = 1; // ช่างหนึ่งคนรับได้ 1 งานในเวลาเดียวกัน
         }
-        
-        let q = db.collection('appointments');
-        queryConditions.forEach(condition => {
-            q = q.where(...condition);
-        });
+        // [!code focus end]
         
         const snap = await q.get();
         if (snap.size >= maxSlot) {
-            const errorMsg = useBeautician && beauticianId !== 'auto-assign' 
+            const errorMsg = useGardener && gardenerId && gardenerId !== 'auto-assign' 
                 ? 'ช่างท่านนี้ไม่ว่างในช่วงเวลาดังกล่าว'
                 : 'ช่วงเวลานี้ถูกจองเต็มแล้ว';
             return { success: false, error: errorMsg };
@@ -121,20 +121,12 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
                 appointmentTime: time,
                 totalPrice: finalAppointmentData.paymentInfo?.totalPrice ?? 0
             };
-            // Debug: log notification settings
-            console.log('[AdminNotify] settings:', JSON.stringify(notificationSettings));
-            let lineNotifications = notificationSettings.lineNotifications;
+            
             let adminNotifications = notificationSettings.adminNotifications;
-            // If missing, try to get from notificationSettings.settings (in case of nested structure)
-            if (!lineNotifications || !adminNotifications) {
-                if (notificationSettings.settings) {
-                    if (!lineNotifications) lineNotifications = notificationSettings.settings.lineNotifications;
-                    if (!adminNotifications) adminNotifications = notificationSettings.settings.adminNotifications;
-                }
+            if (!adminNotifications && notificationSettings.settings) {
+                adminNotifications = notificationSettings.settings.adminNotifications;
             }
-            console.log('[DEBUG] lineNotifications:', lineNotifications);
-            console.log('[DEBUG] adminNotifications:', adminNotifications);
-            // Let sendBookingNotification handle the logic (it already has proper default handling)
+            
             if (adminNotifications && adminNotifications.newBooking) {
                 await sendBookingNotification(notificationData, 'newBooking');
             } else {
@@ -151,6 +143,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
     }
 }
 
+// ... (ส่วนที่เหลือของไฟล์)
 /**
  * Updates an existing appointment by an admin.
  */
