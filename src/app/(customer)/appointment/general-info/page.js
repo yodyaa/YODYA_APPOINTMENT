@@ -272,13 +272,15 @@ function GeneralInfoContent() {
                         <div className='flex items-center'>
                             <label className="w-24 block text-sm font-medium text-gray-700">ชื่อ-สกุล</label>
                             <input
-                                type="text"
-                                name="fullName"
-                                value={formData.fullName}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                                required
+                              type="text"
+                              name="fullName"
+                              value={formData.fullName}
+                              onChange={handleChange}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-100"
+                              required
+                              readOnly
                             />
+
                         </div>
 
                         <div className='flex items-center'>
@@ -337,4 +339,5 @@ export default function GeneralInfoPage() {
             <GeneralInfoContent />
         </Suspense>
     );
+
 }
