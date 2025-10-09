@@ -194,6 +194,20 @@ export default function MonthlyDashboardPage() {
               </div>
             ))}
 
+            {/* Empty cells for days before the first day of month */}
+            {(() => {
+              if (monthlyData.length === 0) return null;
+              const firstDay = parseISO(monthlyData[0].date);
+              const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, ...
+              const emptyCells = [];
+              for (let i = 0; i < firstDayOfWeek; i++) {
+                emptyCells.push(
+                  <div key={`empty-${i}`} className="p-2 border rounded-lg min-h-[120px] bg-gray-100"></div>
+                );
+              }
+              return emptyCells;
+            })()}
+
             {/* Calendar days: adjust so Sunday is first */}
             {monthlyData.map((day) => {
               // day.dayName: 'อา', 'จ', ...
