@@ -1,7 +1,6 @@
-// src/app/(admin)/create-appointment/page.js
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/lib/firebase';
 import { collection, getDocs, query, orderBy, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -311,28 +310,15 @@ export default function CreateAppointmentPage() {
         setAppointmentTime('');
         setSelectedBeauticianId('');
     }, [appointmentDate]);
-
-    const getThaiDateString = (date) => {
+    
+    // [!code focus start]
+    // แก้ไข: ห่อหุ้มฟังก์ชัน Helper ด้วย useCallback เพื่อให้ฟังก์ชันมีความเสถียร
+    const getThaiDateString = useCallback((date) => {
         const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 7, 0, 0);
         return format(localDate, 'yyyy-MM-dd');
-    };
+    }, []);
 
-    const isDateOpen = (date) => {
-        const dayOfWeek = date.getDay();
-        const daySchedule = bookingSettings.weeklySchedule[dayOfWeek];
-        if (!daySchedule || !daySchedule.isOpen) {
-            return false;
-        }
-        const dateStr = getThaiDateString(date);
-        const isHoliday = bookingSettings.holidayDates.some(holiday => holiday.date === dateStr);
-        return !isHoliday;
-    };
-
-    const isDateDisabled = (date) => {
-        return !isDateOpen(date);
-    };
-
-    const checkHolidayDate = (date) => {
+    const checkHolidayDate = useCallback((date) => {
         const dateString = getThaiDateString(date);
         const specialHoliday = bookingSettings.holidayDates?.find(h => h.date === dateString);
         const dayOfWeek = date.getDay();
@@ -341,7 +327,23 @@ export default function CreateAppointmentPage() {
             isHoliday: !!specialHoliday || isWeekendHoliday,
             holidayInfo: specialHoliday || (isWeekendHoliday ? { reason: 'วันหยุดประจำสัปดาห์' } : null)
         };
-    };
+    }, [getThaiDateString, bookingSettings.holidayDates, bookingSettings.weeklySchedule]);
+    
+    const isDateOpen = useCallback((date) => {
+        const dayOfWeek = date.getDay();
+        const daySchedule = bookingSettings.weeklySchedule[dayOfWeek];
+        if (!daySchedule || !daySchedule.isOpen) {
+            return false;
+        }
+        const dateStr = getThaiDateString(date);
+        const isHoliday = bookingSettings.holidayDates.some(holiday => holiday.date === dateStr);
+        return !isHoliday;
+    }, [bookingSettings.weeklySchedule, bookingSettings.holidayDates, getThaiDateString]);
+
+    const isDateDisabled = useCallback((date) => {
+        return !isDateOpen(date);
+    }, [isDateOpen]);
+    // [!code focus end]
 
     const availableTimeSlots = useMemo(() => {
         if (!appointmentDate || !bookingSettings?.timeQueues) {
@@ -399,10 +401,8 @@ export default function CreateAppointmentPage() {
             return;
         }
         
-        // [!code focus start]
-        // ตรรกะการตรวจสอบสล็อตที่แก้ไขแล้ว
         const reCheckSlots = slotCounts[appointmentTime] || 0;
-        let maxSlots = 50; // Default
+        let maxSlots = 50; 
         
         if (bookingSettings.timeQueues && bookingSettings.timeQueues.length > 0) {
             const specificQueue = bookingSettings.timeQueues.find(q => q.time === appointmentTime);
@@ -419,7 +419,6 @@ export default function CreateAppointmentPage() {
             showToast('ช่วงเวลาที่เลือกเต็มแล้ว กรุณาเลือกเวลาใหม่', 'error');
             return;
         }
-        // [!code focus end]
 
         setIsSubmitting(true);
         try {
@@ -473,477 +472,4 @@ export default function CreateAppointmentPage() {
                     time: appointmentTime || '',
                     dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
                     beauticianId: useBeautician ? (beautician?.id || '') : '',
-                    employeeId: useBeautician ? (beautician?.id || '') : '',
-                    beauticianInfo: useBeautician ? { firstName: beautician?.firstName || '', lastName: beautician?.lastName || '' } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
-                    beauticianName: useBeautician ? `${beautician?.firstName || ''} ${beautician?.lastName || ''}`.trim() || 'ไม่ระบุช่าง' : 'ระบบจัดสรร',
-                    duration: totalDuration || 0,
-                    addOns: selectedAddOns || []
-                },
-                paymentInfo: {
-                    basePrice: Number(basePrice) || 0,
-                    addOnsTotal: Number(addOnsTotal) || 0,
-                    originalPrice: Number(totalPrice) || 0,
-                    totalPrice: Number(totalPrice) || 0,
-                    discount: 0,
-                    paymentStatus: 'pending'
-                },
-                date: appointmentDate || '',
-                time: appointmentTime || '',
-                serviceId: selectedService.id || '',
-                beauticianId: useBeautician ? (beautician?.id || '') : '',
-                createdAt: new Date(),
-                createdBy: {
-                    type: 'admin',
-                    adminId: profile?.uid,
-                    adminName: profile?.displayName || 'Admin'
-                },
-                needsCustomerNotification: true,
-            };
-
-            const result = await createAppointmentWithSlotCheck(appointmentData);
-            if (result.success) {
-                showToast('สร้างการนัดหมายสำเร็จ! รอการยืนยันจากลูกค้า', 'success');
-                showToast('ระบบจะส่งการแจ้งเตือนให้ลูกค้ายืนยันการจอง', 'info');
-                router.push('/workorder/create');
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
-            console.error("Error creating appointment:", error);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    if (loading || profileLoading) {
-        return <div className="text-center p-10">กำลังโหลดข้อมูล...</div>;
-    }
-
-    // ... (ส่วน UI ไม่มีการเปลี่ยนแปลง)
-    return (
-        <div className="container mx-auto p-4 md:p-8">
-            <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
-                <h1 className="text-2xl font-bold mb-6 text-gray-800">สร้างการนัดหมายใหม่</h1>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* คอลัมน์ซ้าย */}
-                        <div className="space-y-6">
-                            {/* ขั้นตอนที่ 1: บริการ */}
-                            <div className="p-4 border rounded-lg">
-                                <h2 className="text-lg font-semibold mb-3">1. บริการ</h2>
-                        <select
-                            value={selectedServiceId}
-                            onChange={handleServiceChange}
-                            className="w-full p-2 border rounded-md bg-white"
-                            required
-                        >
-                            <option value="">-- เลือกบริการ --</option>
-                            
-                            {/* รายการโปรด */}
-                            {services.filter(s => s.isFavorite).length > 0 && (
-                                <>
-                                    <optgroup label="⭐ รายการโปรด">
-                                        {services
-                                            .filter(s => s.isFavorite)
-                                            .map(s => (
-                                                <option 
-                                                    key={s.id} 
-                                                    value={s.id}
-                                                    disabled={s.status === 'unavailable'}
-                                                    style={{ 
-                                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
-                                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
-                                                    }}
-                                                >
-                                                    ⭐ {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
-                                                </option>
-                                            ))
-                                        }
-                                    </optgroup>
-                                </>
-                            )}
-                            
-                            {/* บริการทั้งหมด */}
-                            {services.filter(s => !s.isFavorite).length > 0 && (
-                                <>
-                                    <optgroup label="บริการทั้งหมด">
-                                        {services
-                                            .filter(s => !s.isFavorite)
-                                            .map(s => (
-                                                <option 
-                                                    key={s.id} 
-                                                    value={s.id}
-                                                    disabled={s.status === 'unavailable'}
-                                                    style={{ 
-                                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
-                                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
-                                                    }}
-                                                >
-                                                    {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
-                                                </option>
-                                            ))
-                                        }
-                                    </optgroup>
-                                </>
-                            )}
-                        </select>
-                        {services.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-2">
-                                ทั้งหมด {services.length} บริการ
-                                {services.filter(s => s.isFavorite).length > 0 && (
-                                    <span className="text-yellow-600"> | ⭐ รายการโปรด {services.filter(s => s.isFavorite).length}</span>
-                                )} | 
-                                <span className="text-green-600"> เปิดให้บริการ {services.filter(s => s.status === 'available').length}</span> | 
-                                <span className="text-red-600"> งดให้บริการ {services.filter(s => s.status === 'unavailable' || !s.status).length}</span>
-                            </p>
-                        )}
-                        {selectedService?.addOnServices?.length > 0 && (
-                            <div className="mt-4">
-                                <h3 className="text-md font-medium mb-2">บริการเสริม:</h3>
-                                <div className="space-y-2">
-                                    {selectedService.addOnServices.map((addOn, idx) => (
-                                        <label key={idx} className="flex items-center gap-3 p-2 border rounded-md cursor-pointer hover:bg-gray-50">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedAddOnNames.includes(addOn.name)}
-                                                onChange={() => handleAddOnToggle(addOn.name)}
-                                                className="h-4 w-4 rounded"
-                                            />
-                                            <span className="flex-1">{addOn.name}</span>
-                                            <span className="text-sm text-gray-600">+{addOn.duration} นาที / +{addOn.price} {profile.currencySymbol}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="p-4 border rounded-lg">
-                        <h2 className="text-lg font-semibold mb-3">2. ช่างและวันเวลา</h2>
-                        <div className={`grid grid-cols-1 ${!useBeautician ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">วันที่</label>
-                                <div className="calendar-container bg-white rounded-lg shadow p-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const prevMonth = new Date(activeMonth);
-                                                prevMonth.setMonth(prevMonth.getMonth() - 1);
-                                                setActiveMonth(prevMonth);
-                                            }}
-                                            className="p-2 hover:bg-gray-100 rounded-full"
-                                        >
-                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                            </svg>
-                                        </button>
-                                        <span className="text-sm font-medium text-gray-700">
-                                            {activeMonth.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const nextMonth = new Date(activeMonth);
-                                                nextMonth.setMonth(nextMonth.getMonth() + 1);
-                                                setActiveMonth(nextMonth);
-                                            }}
-                                            className="p-2 hover:bg-gray-100 rounded-full"
-                                        >
-                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-7 gap-1 mb-2 text-center">
-                                        {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
-                                            <div key={day} className="text-sm font-medium text-gray-500">
-                                                {day}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="grid grid-cols-7 gap-2">
-                                        {(() => {
-                                            const currentYear = activeMonth.getFullYear();
-                                            const currentMonth = activeMonth.getMonth();
-                                            const firstDay = new Date(currentYear, currentMonth, 1, 0, 0, 0);
-                                            const lastDay = new Date(currentYear, currentMonth + 1, 0, 0, 0, 0);
-                                            const today = new Date();
-                                            today.setHours(0, 0, 0, 0);
-                                            const days = [];
-                                            for (let i = 0; i < firstDay.getDay(); i++) {
-                                                days.push(<div key={`empty-${i}`} className="p-2" />);
-                                            }
-                                            for (let day = 1; day <= lastDay.getDate(); day++) {
-                                                const date = new Date(currentYear, currentMonth, day, 7, 0, 0);
-                                                const dateString = format(date, 'yyyy-MM-dd');
-                                                const isSelected = dateString === appointmentDate;
-                                                const isPast = date < today;
-                                                const isToday = date.toDateString() === today.toDateString();
-                                                const { isHoliday, holidayInfo } = checkHolidayDate(date);
-                                                const isDisabled = isPast || isDateDisabled(date);
-                                                const isBusyDay = !!busyDays[dateString];
-
-                                                days.push(
-                                                    <button
-                                                        key={day}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (isPast) {
-                                                                showToast('ไม่สามารถเลือกวันที่ผ่านมาแล้ว', 'error');
-                                                                return;
-                                                            }
-                                                            if (isHoliday) {
-                                                                showToast(holidayInfo?.reason ?
-                                                                    `วันหยุด: ${holidayInfo.reason}` :
-                                                                    'วันหยุดพิเศษ ไม่เปิดให้จอง', 'error');
-                                                                return;
-                                                            }
-                                                            if (isDisabled) {
-                                                                showToast('วันที่เลือกไม่เปิดทำการ', 'error');
-                                                                return;
-                                                            }
-                                                            if (isBusyDay) {
-                                                                showToast('วันนั้นคิวเต็ม ไม่สามารถจองได้', 'error');
-                                                                return;
-                                                            }
-                                                            setAppointmentDate(dateString);
-                                                            setAppointmentTime('');
-                                                            setSelectedBeauticianId('');
-                                                        }}
-                                                        disabled={isDisabled || isHoliday || isBusyDay}
-                                                        className={`
-                                                            w-full p-2 text-center rounded-md transition-colors
-                                                            ${isSelected ? 'bg-primary text-white shadow-md scale-95' : ''}
-                                                            ${!isSelected && isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
-                                                            ${!isSelected && isHoliday ? (holidayInfo?.reason === 'วันหยุดประจำสัปดาห์' ? 'weekly-holiday' : 'special-holiday') + ' cursor-not-allowed' : ''}
-                                                            ${!isSelected && !isPast && !isHoliday && isDisabled ? 'bg-gray-100 text-gray-400' : ''}
-                                                            ${!isSelected && !isPast && !isHoliday && !isDisabled && isBusyDay ? 'bg-red-500 text-white cursor-not-allowed' : ''}
-                                                            ${!isSelected && !isPast && !isHoliday && !isDisabled && !isBusyDay ? 'hover:bg-gray-100' : ''}
-                                                            ${date.getMonth() !== activeMonth?.getMonth() ? 'opacity-40' : ''}
-                                                            ${isToday ? 'today-date' : ''}
-                                                        `}
-                                                    >
-                                                        {day}
-                                                    </button>
-                                                );
-                                            }
-                                            return days;
-                                        })()}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-full max-w-md mx-auto">
-                                <h2 className="text-base font-bold mb-2 text-primary">เลือกช่วงเวลา</h2>
-
-                                {isDayBusy ? (
-                                    <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                                        <span className="text-lg font-bold text-red-700">คิวเต็ม - ไม่สามารถจองในวันนี้ได้</span>
-                                        <p className="text-sm text-red-500 mt-2">กรุณาเลือกวันอื่นที่สถานะ "ว่าง" เพื่อทำการจอง</p>
-                                    </div>
-                                ) : appointmentDate && !isDateOpen(new Date(appointmentDate)) ? (
-                                    <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                                        {(() => {
-                                            const dateStr = getThaiDateString(new Date(appointmentDate));
-                                            const holidayInfo = bookingSettings.holidayDates.find(holiday => holiday.date === dateStr);
-                                            if (holidayInfo) {
-                                                return (
-                                                    <div>
-                                                        <p className="text-red-600 font-medium">วันหยุดพิเศษ</p>
-                                                        {holidayInfo.note && (
-                                                            <p className="text-red-500 text-sm mt-1">{holidayInfo.note}</p>
-                                                        )}
-                                                        <p className="text-red-400 text-xs mt-2">กรุณาเลือกวันที่อื่น</p>
-                                                    </div>
-                                                );
-                                            } else {
-                                                return <p className="text-gray-600">วันที่เลือกปิดทำการ</p>;
-                                            }
-                                        })()}
-                                        <p className="text-sm text-gray-500">กรุณาเลือกวันอื่น</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        {timeQueueFull ? (
-                                            <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                <p className="text-yellow-600 font-medium">ไม่มีช่วงเวลาว่างในวันที่เลือก</p>
-                                                <p className="text-yellow-500 text-sm mt-1">กรุณาเลือกวันอื่น</p>
-                                            </div>
-                                        ) : (
-                                            <TimeSlotGrid 
-                                                timeSlots={availableTimeSlots}
-                                                selectedTime={appointmentTime}
-                                                onSelect={setAppointmentTime}
-                                            />
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            {bookingSettings.useBeautician ? (
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">ช่าง</label>
-                                    {!appointmentDate || !appointmentTime ? (
-                                        <div className="text-center text-gray-500 py-2 bg-gray-50 rounded-md">
-                                            {!appointmentDate ? 'กรุณาเลือกวันที่ก่อน' : 'กรุณาเลือกเวลาก่อน'}
-                                        </div>
-                                    ) : loading ? (
-                                        <div className="text-center py-4">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                            <p className="mt-2 text-gray-600">กำลังโหลดข้อมูลช่าง...</p>
-                                        </div>
-                                    ) : beauticians.length === 0 ? (
-                                        <div className="text-center text-gray-500 py-2 bg-gray-50 rounded-md">
-                                            ไม่พบข้อมูลช่าง
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {beauticians.map(b => (
-                                                <BeauticianCard
-                                                    key={b.id}
-                                                    beautician={b}
-                                                    isSelected={selectedBeauticianId === b.id}
-                                                    onSelect={(beautician) => setSelectedBeauticianId(beautician.id)}
-                                                    isAvailable={!unavailableBeauticianIds.has(b.id)}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ) : null}
-
-                        </div>
-                    </div>
-                        </div>
-
-                        {/* คอลัมน์ขวา */}
-                        <div className="space-y-6">
-                            {/* ขั้นตอนที่ 3: ข้อมูลลูกค้า */}
-                            <div className="p-4 border rounded-lg">
-                                <h2 className="text-lg font-semibold mb-3">3. ข้อมูลลูกค้า</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                                name="fullName"
-                                value={customerInfo.fullName}
-                                onChange={handleCustomerInfoChange}
-                                placeholder="ชื่อ-นามสกุล"
-                                className="w-full p-2 border rounded-md"
-                                required
-                            />
-                            <input
-                                type="tel"
-                                name="phone"
-                                value={customerInfo.phone}
-                                onChange={handleCustomerInfoChange}
-                                placeholder="เบอร์โทรศัพท์"
-                                className="w-full p-2 border rounded-md"
-                                required
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่ <span className="text-red-500">*</span></label>
-                            <textarea
-                                name="address"
-                                value={customerInfo.address}
-                                onChange={handleCustomerInfoChange}
-                                placeholder="ที่อยู่ลูกค้า (จำเป็นต้องระบุ)"
-                                rows="2"
-                                className="w-full p-2 border rounded-md"
-                                required
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <input
-                                type="text"
-                                name="lineUserId"
-                                value={customerInfo.lineUserId}
-                                onChange={handleCustomerInfoChange}
-                                placeholder="LINE User ID (ถ้ามี)"
-                                className="w-full p-2 border rounded-md"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                หากระบุ LINE User ID ระบบจะค้นหาลูกค้าจาก LINE ID ก่อน และรวมแต้มจากเบอร์โทรศัพท์เก่า (ถ้ามี)
-                            </p>
-                        </div>
-
-                        {isCheckingCustomer && (
-                            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                                <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                                    <span className="text-sm text-gray-600">กำลังตรวจสอบข้อมูลลูกค้า...</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {existingCustomer && !isCheckingCustomer && (
-                            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                                    <span className="text-sm font-medium text-green-800">พบข้อมูลลูกค้าในระบบ</span>
-                                </div>
-                                <div className="text-xs text-green-700 space-y-1">
-                                    <div>ชื่อ: {existingCustomer.fullName}</div>
-                                    <div>เบอร์: {existingCustomer.phone}</div>
-                                    {existingCustomer.address && (
-                                        <div>ที่อยู่: {existingCustomer.address}</div>
-                                    )}
-                                    {existingCustomer.totalPoints > 0 && (
-                                        <div>แต้มสะสม: {existingCustomer.totalPoints} แต้ม</div>
-                                    )}
-                                    <div className="mt-2 text-green-600">
-                                        ⚡ ระบบจะอัปเดตข้อมูลลูกค้าและรวมแต้มอัตโนมัติ
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {customerInfo.phone && !existingCustomer && !isCheckingCustomer && (
-                            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                                    <span className="text-sm font-medium text-blue-800">ลูกค้าใหม่</span>
-                                </div>
-                                <p className="text-xs text-blue-600 mt-1">
-                                    ระบบจะสร้างข้อมูลลูกค้าใหม่ในระบบ
-                                </p>
-                            </div>
-                        )}
-                        <textarea
-                            name="note"
-                            value={customerInfo.note}
-                            onChange={handleCustomerInfoChange}
-                            placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
-                            rows="2"
-                            className="w-full mt-4 p-2 border rounded-md"
-                        ></textarea>
-                    </div>
-
-                    <div className="p-4 border-t mt-6">
-
-
-                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                            <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="text-sm font-medium text-yellow-800">ขั้นตอนการจอง</span>
-                            </div>
-                            <p className="text-xs text-yellow-600 mt-1">
-                                การนัดหมายจะถูกสร้างในสถานะ "รอการยืนยัน" และจะต้องได้รับการยืนยันจากลูกค้าก่อนที่จะเสร็จสมบูรณ์
-                            </p>
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting || (useBeautician && !selectedBeauticianId) || isDayBusy}
-                            className="w-full bg-primary text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400"
-                        >
-                            {isDayBusy ? 'ไม่สามารถจองได้' : (isSubmitting ? 'กำลังบันทึก...' : 'สร้างการนัดหมาย (รอการยืนยัน)')}
-                        </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
+                    employeeId: use
