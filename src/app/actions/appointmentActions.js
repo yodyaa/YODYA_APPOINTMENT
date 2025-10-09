@@ -27,7 +27,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         const settingsRef = db.collection('settings').doc('booking');
         const settingsSnap = await settingsRef.get();
         
-    let maxSlot = 1;
+    let maxSlot = 50;
     let useGardener = false;
         
         if (settingsSnap.exists) {
