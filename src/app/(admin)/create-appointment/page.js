@@ -493,7 +493,13 @@ export default function CreateAppointmentPage() {
         const reCheckSlots = slotCounts[appointmentTime] || 0;
         // หาข้อมูล queue ที่ตรงกับเวลาที่เลือก เพื่อใช้ค่า count ที่ถูกต้อง
         const selectedQueue = bookingSettings.timeQueues.find(q => q.time === appointmentTime);
-        const maxSlots = bookingSettings.useBeautician ? beauticians.length : (selectedQueue?.count || bookingSettings.totalBeauticians);
+        const maxByQueue = selectedQueue?.count || bookingSettings.totalBeauticians;
+        const maxByBeautician = bookingSettings.useBeautician ? beauticians.length : maxByQueue;
+        // *** ใช้ค่าที่น้อยกว่าเพื่อไม่ให้เกินจำนวนที่ตั้งค่าไว้ ***
+        const maxSlots = bookingSettings.useBeautician ? Math.min(maxByBeautician, maxByQueue) : maxByQueue;
+        
+        console.log(`[SlotCheck Frontend] Time: ${appointmentTime}, MaxByQueue: ${maxByQueue}, MaxByBeautician: ${maxByBeautician}, FinalMax: ${maxSlots}, Booked: ${reCheckSlots}`);
+        
         if (reCheckSlots >= maxSlots) {
             showToast('ช่วงเวลาที่เลือกเต็มแล้ว กรุณาเลือกเวลาใหม่', 'error');
             return;
@@ -862,7 +868,11 @@ export default function CreateAppointmentPage() {
                                                     .sort((a, b) => String(a.time).localeCompare(String(b.time)))
                                                     .map(queue => {
                                                         const slot = queue.time;
-                                                        const max = bookingSettings.useBeautician ? beauticians.length : (queue.count || bookingSettings.totalBeauticians);
+                                                        // *** แก้ไข: ถ้าใช้ช่าง ให้ใช้ค่าที่น้อยกว่าระหว่าง beauticians.length กับ queue.count ***
+                                                        // เพื่อไม่ให้เกินจำนวนที่ตั้งค่าไว้
+                                                        const maxByQueue = queue.count || bookingSettings.totalBeauticians;
+                                                        const maxByBeautician = bookingSettings.useBeautician ? beauticians.length : maxByQueue;
+                                                        const max = bookingSettings.useBeautician ? Math.min(maxByBeautician, maxByQueue) : maxByQueue;
                                                         const booked = slotCounts[slot] || 0;
                                                         const isFull = booked >= max;
                                                         const available = max - booked;
@@ -877,11 +887,7 @@ export default function CreateAppointmentPage() {
                                                                 disabled={isFull}
                                                                 title={isFull ? 'คิวเต็ม' : `ว่าง ${available}/${max} คิว`}
                                                             >
-                                                                <div className="flex flex-col items-center">
-                                                                    <span>{slot}</span>
-                                                                    {!isFull && <span className="text-xs opacity-75">({available}/{max})</span>}
-                                                                    {isFull && <span className="text-xs">(เต็ม)</span>}
-                                                                </div>
+                                                                {slot} {isFull && <span className="text-xs ml-1">(เต็ม)</span>}
                                                             </button>
                                                         );
                                                     })}
