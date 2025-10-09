@@ -27,26 +27,24 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         const settingsRef = db.collection('settings').doc('booking');
         const settingsSnap = await settingsRef.get();
         
-        // กำหนดค่าเริ่มต้นสูงสุดไว้ที่ 50 ตามที่คุณต้องการ
-        // แต่ค่านี้จะถูกเขียนทับด้วยค่าจากหน้า "ตั้งค่า" เพื่อความยืดหยุ่น
-        let maxSlot = 50; 
+        let maxSlot = 50; // กำหนดค่าเริ่มต้นเป็น 50
         let useGardener = false;
         
         if (settingsSnap.exists) {
             const data = settingsSnap.data();
             useGardener = !!data.useGardener;
-
-            // 1. ตรวจสอบค่าจาก "กำหนดคิว/ช่าง ตามช่วงเวลา" (timeQueues) ก่อน
+            
+            // ตรวจสอบค่าจาก "กำหนดคิว/ช่าง ตามช่วงเวลา" (timeQueues) ก่อน
             if (Array.isArray(data.timeQueues) && data.timeQueues.length > 0) {
                 const specificQueue = data.timeQueues.find(q => q.time === time);
                 if (specificQueue && typeof specificQueue.count === 'number') {
                     maxSlot = specificQueue.count;
-                } else if (data.totalBeauticians) {
-            // 2. ถ้าไม่เจอการตั้งค่าเฉพาะช่วงเวลา ให้ใช้ค่าจาก "จำนวนคิวสูงสุด" (totalBeauticians)
-                    maxSlot = Number(data.totalBeauticians);
+                } else if (data.totalGardeners) {
+                    // ถ้าไม่เจอการตั้งค่าเฉพาะช่วงเวลา ให้ใช้ค่าจาก "จำนวนคิวสูงสุด"
+                    maxSlot = Number(data.totalGardeners);
                 }
-            } else if (data.totalBeauticians) {
-            // 3. กรณีไม่มี timeQueues เลย ให้ใช้ "จำนวนคิวสูงสุด"
+            } else if (data.totalGardeners) {
+                // กรณีไม่มี timeQueues เลย ให้ใช้ "จำนวนคิวสูงสุด"
                 maxSlot = Number(data.totalGardeners);
             }
         }
@@ -59,19 +57,12 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         
         const snap = await q.get();
 
+        // [!code focus start]
         // ตรวจสอบว่าจำนวนการจอง (snap.size) ถึงค่าสูงสุด (maxSlot) แล้วหรือยัง
+        // *** ส่วนนี้คือส่วนที่แก้ไขเพื่อข้ามการจำกัด ***
+        // จะไม่ตรวจสอบคิวของช่างแยกอีกต่อไป และใช้ maxSlot รวมเสมอ
         if (snap.size >= maxSlot) {
             return { success: false, error: 'ช่วงเวลานี้ถูกจองเต็มแล้ว' };
-        }
-
-        // [!code focus start]
-        // เพิ่มการตรวจสอบเฉพาะกรณีที่มีการเลือกช่าง เพื่อป้องกันการจองช่างคนเดิมซ้ำในเวลาเดียวกัน
-        if (useGardener && gardenerId && gardenerId !== 'auto-assign') {
-            const gardenerQuery = q.where('gardenerId', '==', gardenerId);
-            const gardenerSnap = await gardenerQuery.get();
-            if (gardenerSnap.size > 0) {
-                return { success: false, error: 'ช่างท่านนี้ไม่ว่างในช่วงเวลาดังกล่าว' };
-            }
         }
         // [!code focus end]
 
