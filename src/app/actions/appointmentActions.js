@@ -1,5 +1,4 @@
 // src/app/actions/appointmentActions.js
-
 'use server';
 
 import { db } from '@/app/lib/firebaseAdmin';
@@ -17,6 +16,9 @@ import { findOrCreateCustomer } from '@/app/actions/customerActions';
 import { createOrUpdateCalendarEvent, deleteCalendarEvent } from './calendarActions';
 import * as settingsActions from '@/app/actions/settingsActions';
 
+/**
+ * Creates a new appointment, checking for slot availability.
+ */
 export async function createAppointmentWithSlotCheck(appointmentData) {
     const { date, time, serviceId, gardenerId, userId } = appointmentData;
     if (!date || !time) return { success: false, error: 'กรุณาระบุวันและเวลา' };
@@ -25,48 +27,53 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         const settingsRef = db.collection('settings').doc('booking');
         const settingsSnap = await settingsRef.get();
         
-        let maxSlot = 50; // กำหนดค่าเริ่มต้นเป็น 50
+        // กำหนดค่าเริ่มต้นสูงสุดไว้ที่ 50 ตามที่คุณต้องการ
+        // แต่ค่านี้จะถูกเขียนทับด้วยค่าจากหน้า "ตั้งค่า" เพื่อความยืดหยุ่น
+        let maxSlot = 50; 
         let useGardener = false;
         
         if (settingsSnap.exists) {
             const data = settingsSnap.data();
             useGardener = !!data.useGardener;
-            // ตรวจสอบค่าจาก timeQueues ก่อน
+
+            // 1. ตรวจสอบค่าจาก "กำหนดคิว/ช่าง ตามช่วงเวลา" (timeQueues) ก่อน
             if (Array.isArray(data.timeQueues) && data.timeQueues.length > 0) {
                 const specificQueue = data.timeQueues.find(q => q.time === time);
                 if (specificQueue && typeof specificQueue.count === 'number') {
                     maxSlot = specificQueue.count;
-                } else if (data.totalGardeners) {
-                    // ถ้าไม่เจอใน timeQueues ให้ใช้ totalGardeners
-                    maxSlot = Number(data.totalGardeners);
+                } else if (data.totalBeauticians) {
+            // 2. ถ้าไม่เจอการตั้งค่าเฉพาะช่วงเวลา ให้ใช้ค่าจาก "จำนวนคิวสูงสุด" (totalBeauticians)
+                    maxSlot = Number(data.totalBeauticians);
                 }
-            } else if (data.totalGardeners) {
-                // กรณีไม่มี timeQueues เลย
+            } else if (data.totalBeauticians) {
+            // 3. กรณีไม่มี timeQueues เลย ให้ใช้ "จำนวนคิวสูงสุด"
                 maxSlot = Number(data.totalGardeners);
             }
         }
 
+        // สร้าง query เพื่อนับจำนวนการจองทั้งหมดในวันและเวลานั้น
         let q = db.collection('appointments')
             .where('date', '==', date)
             .where('time', '==', time)
             .where('status', 'in', ['pending', 'confirmed', 'awaiting_confirmation']);
         
+        const snap = await q.get();
+
+        // ตรวจสอบว่าจำนวนการจอง (snap.size) ถึงค่าสูงสุด (maxSlot) แล้วหรือยัง
+        if (snap.size >= maxSlot) {
+            return { success: false, error: 'ช่วงเวลานี้ถูกจองเต็มแล้ว' };
+        }
+
         // [!code focus start]
-        // ตรรกะที่แก้ไข:
-        // ถ้ามีการระบุช่าง ให้ตรวจสอบเฉพาะคิวของช่างคนนั้น และจำกัดให้จองได้แค่ 1
+        // เพิ่มการตรวจสอบเฉพาะกรณีที่มีการเลือกช่าง เพื่อป้องกันการจองช่างคนเดิมซ้ำในเวลาเดียวกัน
         if (useGardener && gardenerId && gardenerId !== 'auto-assign') {
-            q = q.where('gardenerId', '==', gardenerId);
-            maxSlot = 1; // ช่างหนึ่งคนรับได้ 1 งานในเวลาเดียวกัน
+            const gardenerQuery = q.where('gardenerId', '==', gardenerId);
+            const gardenerSnap = await gardenerQuery.get();
+            if (gardenerSnap.size > 0) {
+                return { success: false, error: 'ช่างท่านนี้ไม่ว่างในช่วงเวลาดังกล่าว' };
+            }
         }
         // [!code focus end]
-        
-        const snap = await q.get();
-        if (snap.size >= maxSlot) {
-            const errorMsg = useGardener && gardenerId && gardenerId !== 'auto-assign' 
-                ? 'ช่างท่านนี้ไม่ว่างในช่วงเวลาดังกล่าว'
-                : 'ช่วงเวลานี้ถูกจองเต็มแล้ว';
-            return { success: false, error: errorMsg };
-        }
 
         const serviceRef = db.collection('services').doc(serviceId);
         const serviceSnap = await serviceRef.get();
@@ -143,7 +150,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
     }
 }
 
-// ... (ส่วนที่เหลือของไฟล์)
+
 /**
  * Updates an existing appointment by an admin.
  */
@@ -554,8 +561,6 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
             await deleteCalendarEvent(googleCalendarEventId);
         }
         
-        // For user-initiated actions, we still send them a confirmation.
-        // But we check settings before notifying admin.
         await sendAppointmentCancelledFlexMessage(userId, {
             appointmentId: appointmentId,
             shortId: appointmentId.substring(0, 6).toUpperCase(),
@@ -565,8 +570,6 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
             reason: 'ยกเลิกโดยลูกค้า',
             cancelledBy: 'customer'
         });
-        
-    // Removed telegram notification for cancelled appointment by user
         
         return { success: true };
     } catch (error) {
