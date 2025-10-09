@@ -52,7 +52,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         
         if (useGardener && gardenerId && gardenerId !== 'auto-assign') {
             queryConditions.push(['gardenerId', '==', gardenerId]);
-            maxSlot = 1; 
+            maxSlot = 50; 
         }
         
         let q = db.collection('appointments');
