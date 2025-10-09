@@ -671,7 +671,7 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
                         contents: [
                             {
                                 type: "text",
-                                text: "จะส่งข้อความแจ้งก่อนเข้าไปอีกครั้งนะครับ",
+                                text: "จะส่งข้อความ ก่อนเข้าไปอีกครั้งนะครับ",
                                 size: "sm",
                                 color: "#174D27",
                                 wrap: true,
@@ -1840,3 +1840,4 @@ export async function createPaymentConfirmationFlexTemplate(appointmentData) {
         }
     };
 }
+
