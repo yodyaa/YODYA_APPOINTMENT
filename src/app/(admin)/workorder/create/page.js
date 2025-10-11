@@ -175,7 +175,7 @@ export default function CreateWorkorderPage() {
   const filteredBookings = useMemo(() => {
     const startDate = startOfDay(parseISO(filters.startDate));
     const endDate = endOfDay(parseISO(filters.endDate));
-    const search = filters.search.toLowerCase();
+    const search = filters.search.toLowerCase().trim();
     const status = filters.status;
     return allBookings.filter(app => {
       // วันที่
@@ -183,15 +183,58 @@ export default function CreateWorkorderPage() {
       if (!appDate || appDate < startDate || appDate > endDate) return false;
       // สถานะ
       if (status && app.status !== status) return false;
-      // ค้นหา
-      if (search &&
-        !(app.customerInfo?.fullName?.toLowerCase().includes(search) ||
-          app.customerInfo?.phone?.includes(search) ||
-          app.fullName?.toLowerCase().includes(search) ||
-          app.phone?.includes(search))) return false;
+      // ค้นหา - ขยายขอบเขตการค้นหา
+      if (search) {
+        const customer = bookingCustomers[app.id];
+        const searchableFields = [
+          // ชื่อลูกค้า
+          app.customerInfo?.fullName,
+          app.fullName,
+          app.customerName,
+          customer?.fullName,
+          customer?.name,
+          // เบอร์โทร
+          app.customerInfo?.phone,
+          app.phone,
+          app.customerPhone,
+          app.contact,
+          customer?.phone,
+          customer?.contact,
+          // บริการ
+          app.serviceName,
+          app.serviceInfo?.name,
+          // ที่อยู่
+          app.address,
+          app.customerInfo?.address,
+          customer?.address,
+          // หมู่บ้าน
+          app.village,
+          app.customerInfo?.village,
+          customer?.village,
+          // หมายเหตุ
+          app.note,
+          app.customerInfo?.note,
+          customer?.note,
+          // ช่าง
+          app.gardenerName,
+          app.gardenersInfo?.firstName,
+          app.appointmentInfo?.beauticianName,
+          // เคสที่
+          app.caseNumber,
+          // LINE ID (บางส่วน)
+          app.lineUserId,
+          customer?.userId,
+        ].filter(Boolean);
+
+        const found = searchableFields.some(field => 
+          String(field).toLowerCase().includes(search)
+        );
+        
+        if (!found) return false;
+      }
       return true;
     });
-  }, [allBookings, filters]);
+  }, [allBookings, filters, bookingCustomers]);
 
   // สรุปจำนวนแต่ละสถานะ (ทั้งหมด ไม่สนใจการกรอง)
   const statusSummary = useMemo(() => {
@@ -584,7 +627,14 @@ export default function CreateWorkorderPage() {
         </div>
         <div>
           <label className="text-sm font-medium mr-2">ค้นหา:</label>
-          <input type="text" name="search" placeholder="ชื่อ หรือ เบอร์โทร" value={filters.search} onChange={handleFilterChange} className="p-2 border rounded-md" />
+          <input 
+            type="text" 
+            name="search" 
+            placeholder="ชื่อ, เบอร์, บริการ, ที่อยู่, ช่าง, เคส..." 
+            value={filters.search} 
+            onChange={handleFilterChange} 
+            className="p-2 border rounded-md w-64" 
+          />
         </div>
         <div>
           <label className="text-sm font-medium mr-2">สถานะ:</label>

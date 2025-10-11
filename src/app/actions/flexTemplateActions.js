@@ -4,7 +4,7 @@ import { getShopProfile } from './settingsActions';
 export async function createPaymentFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, paymentInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const totalAmount = paymentInfo?.totalAmount || paymentInfo?.totalPrice || serviceInfo?.price || 0;
+    const totalAmount = Number(paymentInfo?.totalAmount || paymentInfo?.totalPrice || serviceInfo?.price || 0);
     const formattedAmount = new Intl.NumberFormat('th-TH').format(totalAmount);
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
     const safeId = (id || appointmentId || '').toString();
@@ -492,13 +492,13 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
     const { id, serviceInfo, customerInfo, date, time, appointmentInfo, gardenerName, caseNumber, price } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
-    const beauticianName = appointmentInfo?.beauticianInfo?.firstName || appointmentInfo?.beautician || gardenerName || 'จะแจ้งให้ทราบ';
+    const beauticianName = appointmentInfo?.beauticianInfo?.firstName || appointmentInfo?.beautician || gardenerName || 'ยอดหญ้า';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
         month: 'short',
         year: 'numeric'
     });
-    const formattedPrice = price ? new Intl.NumberFormat('th-TH').format(price) : null;
+    const formattedPrice = price ? new Intl.NumberFormat('th-TH').format(Number(price)) : null;
     
     return {
         type: "flex",
@@ -595,7 +595,7 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
                                     }
                                 ]
                             },
-                            ...(beauticianName && beauticianName !== 'จะแจ้งให้ทราบ' ? [{
+                            ...(beauticianName ? [{
                                 type: "box",
                                 layout: "horizontal",
                                 contents: [
@@ -671,7 +671,7 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
                         contents: [
                             {
                                 type: "text",
-                                text: "จะส่งข้อความ ก่อนเข้าไปอีกครั้งนะครับ",
+                                text: "จะไลน์แจ้งก่อนเข้าไปอีกครั้งนะครับ",
                                 size: "sm",
                                 color: "#174D27",
                                 wrap: true,
@@ -1695,7 +1695,7 @@ export async function createDailyAppointmentNotificationFlexTemplate(appointment
 export async function createPaymentConfirmationFlexTemplate(appointmentData) {
     const { id, appointmentId, paymentInfo, serviceInfo, customerInfo } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const totalAmount = paymentInfo?.totalAmount || paymentInfo?.amountPaid || serviceInfo?.price || 0;
+    const totalAmount = Number(paymentInfo?.totalAmount || paymentInfo?.amountPaid || serviceInfo?.price || 0);
     const formattedAmount = new Intl.NumberFormat('th-TH').format(totalAmount);
     const serviceName = serviceInfo?.name || 'บริการจัดสวน';
     const safeId = (id || appointmentId || '').toString();
