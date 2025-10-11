@@ -108,7 +108,7 @@ export async function createAdminNewBookingFlexTemplate(notificationData) {
         { label: "บริการ", value: serviceName },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: `${appointmentTime} น.` },
-        { label: "ยอดรวม", value: `${totalPrice.toLocaleString()} ${currencySymbol}` }
+        { label: "ยอดรวม", value: `${Number(totalPrice).toLocaleString()} ${currencySymbol}` }
     ];
     
     return await createAdminBaseTemplate("จองคิวใหม่", "#4CAF50", data);
@@ -131,7 +131,7 @@ export async function createAdminPaymentReceivedFlexTemplate(notificationData) {
         { label: "บริการ", value: serviceName },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: `${appointmentTime} น.` },
-        { label: "ยอดชำระ", value: `${totalPrice.toLocaleString()} ${currencySymbol}` }
+        { label: "ยอดชำระ", value: `${Number(totalPrice).toLocaleString()} ${currencySymbol}` }
     ];
     
     return await createAdminBaseTemplate("ได้รับชำระเงิน", "#FF9800", data);
@@ -199,7 +199,7 @@ export async function createAdminWorkorderCreatedFlexTemplate(notificationData) 
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
         { label: "พนักงาน", value: staffName },
-        { label: "ราคา", value: totalPrice > 0 ? `${totalPrice.toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
+        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("สร้างงานใหม่", "#9C27B0", data);
@@ -224,7 +224,7 @@ export async function createAdminWorkorderAssignedFlexTemplate(notificationData)
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
         { label: "พนักงาน", value: staffName },
         { label: "เคสที่", value: caseNumber || 'ไม่ระบุ' },
-        { label: "ราคา", value: totalPrice > 0 ? `${totalPrice.toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
+        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("มอบหมายงานจากนัดหมาย", "#673AB7", data);
@@ -247,7 +247,7 @@ export async function createAdminPaymentStatusChangedFlexTemplate(notificationDa
         { label: "บริการ", value: serviceName },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
-        { label: "ราคา", value: totalPrice > 0 ? `${totalPrice.toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
+        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
         { label: "สถานะเดิม", value: oldPaymentStatus },
         { label: "สถานะใหม่", value: paymentStatus }
     ];
@@ -273,7 +273,7 @@ export async function createAdminWorkStatusChangedFlexTemplate(notificationData)
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
         { label: "พนักงาน", value: staffName },
-        { label: "ราคา", value: totalPrice > 0 ? `${totalPrice.toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
+        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
         { label: "สถานะเดิม", value: oldWorkStatus },
         { label: "สถานะใหม่", value: workStatus }
     ];
