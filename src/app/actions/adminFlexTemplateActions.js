@@ -99,16 +99,16 @@ export async function createAdminNewBookingFlexTemplate(notificationData) {
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
-        { label: "เวลา", value: `${appointmentTime} น.` },
-        { label: "ยอดรวม", value: `${Number(totalPrice).toLocaleString()} ${currencySymbol}` }
+        { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
+        { label: "ยอดรวม", value: totalPrice ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("จองคิวใหม่", "#4CAF50", data);
@@ -122,16 +122,16 @@ export async function createAdminPaymentReceivedFlexTemplate(notificationData) {
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
-        { label: "เวลา", value: `${appointmentTime} น.` },
-        { label: "ยอดชำระ", value: `${Number(totalPrice).toLocaleString()} ${currencySymbol}` }
+        { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
+        { label: "ยอดชำระ", value: totalPrice ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("ได้รับชำระเงิน", "#FF9800", data);
@@ -143,15 +143,15 @@ export async function createAdminPaymentReceivedFlexTemplate(notificationData) {
 export async function createAdminCustomerConfirmedFlexTemplate(notificationData) {
     const { customerName, serviceName, appointmentDate, appointmentTime } = notificationData;
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
-        { label: "เวลา", value: `${appointmentTime} น.` }
+        { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("ลูกค้ายืนยันนัดหมาย", "#2196F3", data);
@@ -163,20 +163,17 @@ export async function createAdminCustomerConfirmedFlexTemplate(notificationData)
 export async function createAdminBookingCancelledFlexTemplate(notificationData) {
     const { customerName, serviceName, appointmentDate, appointmentTime, reason } = notificationData;
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
-        { label: "เวลา", value: `${appointmentTime} น.` }
+        { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
+        { label: "เหตุผล", value: reason || 'ไม่ระบุ' }
     ];
-    
-    if (reason) {
-        data.push({ label: "เหตุผล", value: reason });
-    }
     
     return await createAdminBaseTemplate("ยกเลิกการจอง", "#F44336", data);
 }
@@ -189,17 +186,17 @@ export async function createAdminWorkorderCreatedFlexTemplate(notificationData) 
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
-        { label: "พนักงาน", value: staffName },
-        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
+        { label: "พนักงาน", value: staffName || 'ไม่ระบุ' },
+        { label: "ราคา", value: totalPrice && totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("สร้างงานใหม่", "#9C27B0", data);
@@ -213,18 +210,18 @@ export async function createAdminWorkorderAssignedFlexTemplate(notificationData)
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
-        { label: "พนักงาน", value: staffName },
+        { label: "พนักงาน", value: staffName || 'ไม่ระบุ' },
         { label: "เคสที่", value: caseNumber || 'ไม่ระบุ' },
-        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
+        { label: "ราคา", value: totalPrice && totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("มอบหมายงานจากนัดหมาย", "#673AB7", data);
@@ -238,18 +235,18 @@ export async function createAdminPaymentStatusChangedFlexTemplate(notificationDa
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
-        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
-        { label: "สถานะเดิม", value: oldPaymentStatus },
-        { label: "สถานะใหม่", value: paymentStatus }
+        { label: "ราคา", value: totalPrice && totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
+        { label: "สถานะเดิม", value: oldPaymentStatus || 'ไม่ระบุ' },
+        { label: "สถานะใหม่", value: paymentStatus || 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("เปลี่ยนสถานะเก็บเงิน", "#FF5722", data);
@@ -263,19 +260,19 @@ export async function createAdminWorkStatusChangedFlexTemplate(notificationData)
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const formattedDate = appointmentDate 
+        ? new Date(appointmentDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'ไม่ระบุ';
     
     const data = [
-        { label: "ลูกค้า", value: customerName },
-        { label: "บริการ", value: serviceName },
+        { label: "ลูกค้า", value: customerName || 'ไม่ระบุ' },
+        { label: "บริการ", value: serviceName || 'ไม่ระบุ' },
         { label: "วันที่", value: formattedDate },
         { label: "เวลา", value: appointmentTime ? `${appointmentTime} น.` : 'ไม่ระบุ' },
-        { label: "พนักงาน", value: staffName },
-        { label: "ราคา", value: totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
-        { label: "สถานะเดิม", value: oldWorkStatus },
-        { label: "สถานะใหม่", value: workStatus }
+        { label: "พนักงาน", value: staffName || 'ไม่ระบุ' },
+        { label: "ราคา", value: totalPrice && totalPrice > 0 ? `${Number(totalPrice).toLocaleString()} ${currencySymbol}` : 'ไม่ระบุ' },
+        { label: "สถานะเดิม", value: oldWorkStatus || 'ไม่ระบุ' },
+        { label: "สถานะใหม่", value: workStatus || 'ไม่ระบุ' }
     ];
     
     return await createAdminBaseTemplate("เปลี่ยนสถานะงาน", "#3F51B5", data);

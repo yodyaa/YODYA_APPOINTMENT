@@ -28,10 +28,11 @@ export async function updateWorkorderStatusByAdmin({ workorderId, field, value, 
       (oldData.customerInfo && (oldData.customerInfo.lineUserId || oldData.customerInfo.lineId));
     const workorderData = { id: workorderId, ...oldData, [field]: value };
 
-    // อ่าน toggle จาก settings (optional: สามารถเพิ่ม logic ดึงจาก Firestore ได้)
-    // ตัวอย่างนี้เปิด true ตลอด
-    const notifyProcessing = true;
-    const notifyCompleted = true;
+    // อ่าน settings จาก Firestore แทนการ hardcode
+    const { getNotificationSettings } = await import('./settingsActions');
+    const { success: settingsSuccess, settings } = await getNotificationSettings();
+    const notifyProcessing = settingsSuccess && settings?.customerNotifications?.notifyProcessing;
+    const notifyCompleted = settingsSuccess && settings?.customerNotifications?.notifyCompleted;
 
     if (field === 'processStatus' && customerLineId) {
       try {

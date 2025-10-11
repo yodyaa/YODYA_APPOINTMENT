@@ -102,6 +102,15 @@ export async function sendAppointmentConfirmedFlexMessage(userId, appointmentDat
  * Sends a Service Completed Flex Message.
  */
 export async function sendServiceCompletedFlexMessage(userId, appointmentData) {
+    // ตรวจสอบการตั้งค่าการแจ้งเตือนก่อนส่ง
+    const { getNotificationSettings } = await import('./settingsActions');
+    const { success, settings } = await getNotificationSettings();
+    
+    if (!success || !settings?.customerNotifications?.notifyCompleted) {
+        console.log('[LINE FLEX] การแจ้งเตือน "เสร็จสิ้น" ถูกปิดในการตั้งค่า');
+        return { success: true, message: 'Notification disabled for notifyCompleted' };
+    }
+    
     const flexTemplate = await createServiceCompletedFlexTemplate(appointmentData);
     return sendFlexMessage(userId, flexTemplate, 'Service Completed');
 }
@@ -110,6 +119,15 @@ export async function sendServiceCompletedFlexMessage(userId, appointmentData) {
  * Sends a Service In Progress Flex Message.
  */
 export async function sendServiceInProgressFlexMessage(userId, appointmentData) {
+    // ตรวจสอบการตั้งค่าการแจ้งเตือนก่อนส่ง
+    const { getNotificationSettings } = await import('./settingsActions');
+    const { success, settings } = await getNotificationSettings();
+    
+    if (!success || !settings?.customerNotifications?.notifyProcessing) {
+        console.log('[LINE FLEX] การแจ้งเตือน "กำลังดำเนินการ" ถูกปิดในการตั้งค่า');
+        return { success: true, message: 'Notification disabled for notifyProcessing' };
+    }
+    
     const flexTemplate = await createServiceInProgressFlexTemplate(appointmentData);
     return sendFlexMessage(userId, flexTemplate, 'Service In Progress');
 }

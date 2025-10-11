@@ -67,8 +67,45 @@ export default function WorkorderAdminPage() {
   // วันที่ที่เลือกในรูปแบบ string
   const selectedDateStr = selectedDate.toISOString().split('T')[0];
   
-  // กรองงานตามวันที่เลือก - รองรับทั้ง workorder และ appointment
-  const selectedDayWorkorders = workorders.filter(w => w.date === selectedDateStr);
+  // ฟังก์ชันเรียงลำดับตาม caseNumber แบบ natural sorting (1.1, 1.2, 2.1, 2.2, 3, 4.1)
+  const sortByCaseNumber = (items) => {
+    return [...items].sort((a, b) => {
+      const caseA = a.caseNumber || '';
+      const caseB = b.caseNumber || '';
+      
+      // ถ้าไม่มี caseNumber ให้อยู่ท้ายสุด
+      if (!caseA && !caseB) return 0;
+      if (!caseA) return 1;
+      if (!caseB) return -1;
+      
+      // แยกตัวเลขและจุดทศนิยม
+      const parseCase = (caseStr) => {
+        const parts = String(caseStr).split('.');
+        return parts.map(part => {
+          const num = parseFloat(part);
+          return isNaN(num) ? 0 : num;
+        });
+      };
+      
+      const partsA = parseCase(caseA);
+      const partsB = parseCase(caseB);
+      
+      // เปรียบเทียบแต่ละส่วน
+      const maxLength = Math.max(partsA.length, partsB.length);
+      for (let i = 0; i < maxLength; i++) {
+        const numA = partsA[i] || 0;
+        const numB = partsB[i] || 0;
+        if (numA !== numB) {
+          return numA - numB;
+        }
+      }
+      
+      return 0;
+    });
+  };
+  
+  // กรองงานตามวันที่เลือก - รองรับทั้ง workorder และ appointment พร้อมเรียงตาม caseNumber
+  const selectedDayWorkorders = sortByCaseNumber(workorders.filter(w => w.date === selectedDateStr));
   const selectedDayAppointments = appointments.filter(a => a.date === selectedDateStr);
 
   useEffect(() => {
@@ -128,6 +165,20 @@ export default function WorkorderAdminPage() {
 
   // ตัวเลือกสถานะงานใหม่
   const processStatusOptions = ["อยู่ในแผนงาน", "ช่างกำลังดำเนินการ", "เสร็จสิ้น"];
+
+  // ตัวเลือกสีพื้นหลัง
+  const colorOptions = [
+    { value: '#ffffff', label: '⚪', color: '#ffffff' },
+    { value: '#fef3c7', label: '🟡', color: '#fef3c7' },
+    { value: '#fed7aa', label: '🟠', color: '#fed7aa' },
+    { value: '#fecaca', label: '🔴', color: '#fecaca' },
+    { value: '#fce7f3', label: '🩷', color: '#fce7f3' },
+    { value: '#e9d5ff', label: '🟣', color: '#e9d5ff' },
+    { value: '#dbeafe', label: '🔵', color: '#dbeafe' },
+    { value: '#ccfbf1', label: '🩵', color: '#ccfbf1' },
+    { value: '#d1fae5', label: '🟢', color: '#d1fae5' },
+    { value: '#f3f4f6', label: '⚫', color: '#f3f4f6' },
+  ];
 
   // ตัวเลือกช่าง: ดึงจาก gardeners collection เท่านั้น
   const [gardeners, setGardeners] = useState([]);
@@ -510,6 +561,7 @@ export default function WorkorderAdminPage() {
               <table className="w-full text-sm border">
                 <thead>
                   <tr className="bg-gray-100 text-sm">
+                    <th className="p-2 border font-normal">🌈</th>
                     <th className="p-2 border font-normal">สถานะ</th>
                     <th className="p-2 border font-normal">เคสที่</th>
                     <th className="p-2 border font-normal">เวลา</th>
@@ -524,7 +576,7 @@ export default function WorkorderAdminPage() {
                 <tbody>
                   {selectedDayWorkorders.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center p-4 text-gray-400 text-sm">
+                      <td colSpan={10} className="text-center p-4 text-gray-400 text-sm">
                         ไม่มีงานในวันที่เลือก
                       </td>
                     </tr>
@@ -533,8 +585,29 @@ export default function WorkorderAdminPage() {
                       const service = services.find(s => s.serviceName === w.workorder || s.name === w.workorder);
                       const serviceDuration = service?.duration || 0;
                       const price = w.price !== undefined && w.price !== null && w.price !== '' ? w.price : (service?.price || 0);
+                      const rowColor = w.rowColor || '#ffffff';
                       return (
-                        <tr key={w.idKey || w.id} className="border-b hover:bg-gray-50 text-sm">
+                        <tr key={w.idKey || w.id} className="border-b hover:opacity-90 text-sm" style={{ backgroundColor: rowColor }}>
+                          {/* สีพื้นหลัง */}
+                          <td className="p-2 border text-center">
+                            <select
+                              value={rowColor}
+                              onChange={e => handleInlineEdit(w.id, 'rowColor', e.target.value)}
+                              className="border rounded px-1 py-1 text-xs w-full cursor-pointer"
+                              style={{ backgroundColor: rowColor }}
+                              title="เลือกสีพื้นหลัง"
+                            >
+                              {colorOptions.map(opt => (
+                                <option 
+                                  key={opt.value} 
+                                  value={opt.value}
+                                  style={{ backgroundColor: opt.color }}
+                                >
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
                           {/* สถานะ */}
                           <td className="p-2 border">
                             <select
@@ -739,6 +812,7 @@ export default function WorkorderAdminPage() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 font-semibold text-sm">
+                    <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>
