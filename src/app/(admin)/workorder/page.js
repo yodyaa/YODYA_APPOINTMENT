@@ -417,6 +417,25 @@ export default function WorkorderAdminPage() {
     // eslint-disable-next-line
   }, [selectedDateStr, staffCount, dailyStaffSettings, productivityThreshold, dailyProductivitySettings]);
 
+  // อ่านสถานะ busy จาก Firestore ทุกครั้งที่ selectedDate เปลี่ยน
+  useEffect(() => {
+    const fetchBusyStatus = async () => {
+      try {
+        const busyDoc = await getDoc(doc(db, "dayBookingStatus", selectedDateStr));
+        if (busyDoc.exists()) {
+          const busyData = busyDoc.data();
+          setDayStats(prev => ({
+            ...prev,
+            isBusy: !!busyData.isBusy
+          }));
+        }
+      } catch (err) {
+        // fallback: ไม่เปลี่ยนค่า isBusy
+      }
+    };
+    fetchBusyStatus();
+  }, [selectedDateStr]);
+
   // บันทึกการตั้งค่าจำนวนช่าง
   const handleStaffCountChange = async (newCount) => {
     setStaffCount(newCount);
