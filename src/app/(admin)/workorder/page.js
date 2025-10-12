@@ -372,8 +372,8 @@ export default function WorkorderAdminPage() {
     });
     
     const avgProductivity = currentStaffCount > 0 ? totalRevenue / currentStaffCount : 0;
-    // ถ้า totalRevenue > currentProductivity * currentStaffCount ให้ถือว่าไม่ว่าง
-    const isBusy = totalRevenue > (currentProductivity * currentStaffCount);
+  // ถ้า totalRevenue >= currentProductivity * currentStaffCount ให้ถือว่าไม่ว่าง
+  const isBusy = totalRevenue >= (currentProductivity * currentStaffCount);
 
     // บันทึกสถานะ busy ลง Firestore
     try {

@@ -770,7 +770,7 @@ export default function CreateAppointmentPage() {
                                                 const isPast = date < today;
                                                 const isToday = date.toDateString() === today.toDateString();
                                                 const { isHoliday, holidayInfo } = checkHolidayDate(date);
-                                                const isDisabled = isPast || isDateDisabled(date);
+                                                const isDisabled = isPast || isDateDisabled(date) || isToday;
 
                                                 // ตรวจสอบสถานะ busy ของวันจาก busyDays
                                                 const isBusyDay = !!busyDays[dateString];
@@ -780,24 +780,10 @@ export default function CreateAppointmentPage() {
                                                         key={day}
                                                         type="button"
                                                         onClick={() => {
-                                                            if (isPast) {
-                                                                showToast('ไม่สามารถเลือกวันที่ผ่านมาแล้ว', 'error');
-                                                                return;
-                                                            }
-                                                            if (isHoliday) {
-                                                                showToast(holidayInfo?.reason ?
-                                                                    `วันหยุด: ${holidayInfo.reason}` :
-                                                                    'วันหยุดพิเศษ ไม่เปิดให้จอง', 'error');
-                                                                return;
-                                                            }
-                                                            if (isDisabled) {
-                                                                showToast('วันที่เลือกไม่เปิดทำการ', 'error');
-                                                                return;
-                                                            }
-                                                            if (isBusyDay) {
-                                                                showToast('วันนั้นคิวเต็ม ไม่สามารถจองได้', 'error');
-                                                                return;
-                                                            }
+                                                            if (isPast) return;
+                                                            if (isHoliday) return;
+                                                            if (isDisabled) return;
+                                                            if (isBusyDay) return;
                                                             setAppointmentDate(dateString);
                                                             setAppointmentTime('');
                                                             setSelectedBeauticianId('');
@@ -1050,10 +1036,10 @@ export default function CreateAppointmentPage() {
                         </div>
                         <button
                             type="submit"
-                            disabled={isSubmitting || (useBeautician && !selectedBeauticianId) || isDayBusy}
+                            disabled={isSubmitting || (useBeautician && !selectedBeauticianId) || isDayBusy || (appointmentDate === format(new Date(), 'yyyy-MM-dd'))}
                             className="w-full bg-primary text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400"
                         >
-                            {isDayBusy ? 'ไม่สามารถจองได้' : (isSubmitting ? 'กำลังบันทึก...' : 'สร้างการนัดหมาย (รอการยืนยัน)')}
+                            {(appointmentDate === format(new Date(), 'yyyy-MM-dd')) ? 'ไม่สามารถจองวันปัจจุบัน' : (isDayBusy ? 'ไม่สามารถจองได้' : (isSubmitting ? 'กำลังบันทึก...' : 'สร้างการนัดหมาย (รอการยืนยัน)'))}
                         </button>
                             </div>
                         </div>

@@ -471,10 +471,10 @@ function SelectDateTimeContent() {
                 <div className="w-full max-w-md mx-auto mt-8 mb-8">
                     <button
                         onClick={handleConfirm}
-                        disabled={!date || !time || (useBeautician && !selectedBeautician)}
+                        disabled={!date || !time || (useBeautician && !selectedBeautician) || (date && (date.toDateString() === (new Date()).toDateString()))}
                         className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg "
                     >
-                        ถัดไป
+                        {(date && (date.toDateString() === (new Date()).toDateString())) ? 'ไม่สามารถจองวันปัจจุบัน' : 'ถัดไป'}
                     </button>
                 </div>
 
