@@ -27,9 +27,16 @@ export default function AdminCustomersPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const router = useRouter();
   const { showToast } = useToast();
 
+  // Helper function to shorten address
+  function shortenAddress(address, maxLength = 32) {
+    if (!address) return '-';
+    return address.length > maxLength ? address.slice(0, maxLength) + '...' : address;
+  }
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -101,6 +108,8 @@ export default function AdminCustomersPage() {
       (c.address && c.address.toLowerCase().includes(q))
     );
   });
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -171,11 +180,11 @@ export default function AdminCustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
+              {paginated.map(c => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="py-2 px-4">{c.fullName || '-'}</td>
                   <td className="py-2 px-4">{c.phone || '-'}</td>
-                  <td className="py-2 px-4">{c.address || '-'}</td>
+                  <td className="py-2 px-4" title={c.address || ''}>{shortenAddress(c.address)}</td>
                   <td className="py-2 px-4">
                     <span className="text-green-600 font-semibold">
                       {(c.points || c.totalPoints || 0) > 0 ? `${c.points || c.totalPoints || 0} แต้ม` : 'ไม่มีแต้ม'}
@@ -224,6 +233,21 @@ export default function AdminCustomersPage() {
           </table>
         </div>
       )}
+      {totalPages > 1 && (
+  <div className="flex justify-center items-center gap-2 mt-6">
+    <button
+      className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+      onClick={() => setPage(page - 1)}
+      disabled={page === 1}
+    >ก่อนหน้า</button>
+    <span className="mx-2">หน้า {page} / {totalPages}</span>
+    <button
+      className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+      onClick={() => setPage(page + 1)}
+      disabled={page === totalPages}
+    >ถัดไป</button>
+  </div>
+)}
     </div>
   );
 }

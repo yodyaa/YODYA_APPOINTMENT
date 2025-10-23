@@ -21,6 +21,8 @@ export default function EditCustomerPage() {
     note: '',
     credit: ''
   });
+  const [latestBookingAddress, setLatestBookingAddress] = useState('');
+  const [fetchingAddress, setFetchingAddress] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
@@ -63,6 +65,46 @@ export default function EditCustomerPage() {
     };
     fetchCustomer();
   }, [id, router, showToast]);
+
+  // ดึง address ล่าสุดจากการจอง (appointments)
+  const fetchLatestAddressFromAppointments = async () => {
+    if (!id) return;
+    setFetchingAddress(true);
+    try {
+      const { collection, query, where, orderBy, limit, getDocs, doc, updateDoc } = await import('firebase/firestore');
+      let q;
+      console.log('ค้นหา appointments ด้วย userId:', formData.userId);
+      q = query(
+        collection(db, 'appointments'),
+        where('userId', '==', formData.userId),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      console.log('ผลลัพธ์ appointments:', querySnapshot.docs.map(d => d.data()));
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0].data();
+        const address = docData.customerInfo?.address || '';
+        if (address) {
+          setLatestBookingAddress(address);
+          // อัพเดต address ใน customers ทันที
+          const customerRef = doc(db, 'customers', id);
+          await updateDoc(customerRef, { address, updatedAt: new Date() });
+          setFormData(prev => ({ ...prev, address }));
+          showToast('บันทึกที่อยู่ล่าสุดจากการจองลงข้อมูลลูกค้าเรียบร้อย!', 'success');
+        } else {
+          showToast('ไม่พบที่อยู่ในข้อมูลการจองล่าสุด', 'warning');
+        }
+      } else {
+        showToast('ไม่พบข้อมูลการจองของลูกค้าคนนี้', 'warning');
+      }
+    } catch (error) {
+      console.error('Fetch address error:', error);
+      showToast('เกิดข้อผิดพลาดในการดึงที่อยู่', 'error');
+    } finally {
+      setFetchingAddress(false);
+    }
+  };
 
   // ฟังก์ชันคัดลอก User ID (LINE)
   function copyToClipboard(text) {
@@ -161,7 +203,29 @@ export default function EditCustomerPage() {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">ที่อยู่ (จากการจอง)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">ที่อยู่จากการจองล่าสุด</label>
+                <div className="flex gap-2 items-center mb-2">
+                  <textarea
+                    value={latestBookingAddress}
+                    readOnly
+                    rows="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={fetchLatestAddressFromAppointments}
+                    disabled={fetchingAddress}
+                    className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center"
+                    title="รีเฟรชที่อยู่จากการจอง"
+                  >
+                    {fetchingAddress ? (
+                      <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#3b82f6" strokeWidth="4" fill="none"/><path d="M12 2v4" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"/><path d="M12 18v4" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M4 4v5h.582M20 20v-5h-.581" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 9.5A8.38 8.38 0 0 0 12 5.5a8.38 8.38 0 0 0-8 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14.5A8.38 8.38 0 0 0 12 18.5a8.38 8.38 0 0 0 8-4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    )}
+                  </button>
+                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่ (แก้ไขโดยแอดมิน)</label>
                 <textarea
                   name="address"
                   value={formData.address}
@@ -172,15 +236,7 @@ export default function EditCustomerPage() {
               </div>
               {/* คอลัมน์ 2: ข้อมูลที่อยู่และรายละเอียด */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ที่อยู่</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">ลิงก์แผนที่</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ลิงก์แผนที่</label>
                 <input
                   type="text"
                   name="mapLink"

@@ -53,6 +53,18 @@ export default function WorkorderDetailPage({ params }) {
 
   const safe = (val, fallback = "-") => (val !== undefined && val !== null && val !== "" ? val : fallback);
 
+  // เพิ่มกรอบ border เหลืองและ placeholder ให้ทุก input/textarea/select ในข้อมูลลูกค้าและข้อมูลบริการที่สามารถแก้ไขได้ทั้งหมด
+  const editInputClass = "font-semibold text-gray-800 bg-yellow-50 border-2 border-yellow-400 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-yellow-500";
+  const editTextareaClass = "text-sm text-gray-800 bg-yellow-50 border-2 border-yellow-400 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-yellow-500";
+  const editSelectClass = "px-3 py-1 rounded-full text-xs font-medium w-full bg-yellow-50 border-2 border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500";
+
+  // สถานะ กับ สถานะการดำเนินงาน: sync ค่า processStatus กับ status
+  useEffect(() => {
+    if (editMode && editFields.status === 'completed' && editFields.processStatus !== 'เสร็จสิ้น') {
+      setEditFields(f => ({ ...f, processStatus: 'เสร็จสิ้น' }));
+    }
+  }, [editMode, editFields.status, editFields.processStatus]);
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -170,9 +182,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="font-semibold text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.workorder === 'string' ? editFields.workorder : (editFields.workorder ? String(editFields.workorder) : '')}
                   onChange={e => setEditFields(f => ({ ...f, workorder: e.target.value }))}
+                  placeholder="กรอกชื่อ/บริการ..."
                 />
               ) : (
                 <div className="font-semibold text-gray-800 bg-gray-50 p-2 rounded">{safe(workorder.workorder)}</div>
@@ -182,7 +195,7 @@ export default function WorkorderDetailPage({ params }) {
               <label className="block font-medium text-gray-600 mb-1">สถานะงาน</label>
               {editMode ? (
                 <select
-                  className="px-3 py-1 rounded-full text-xs font-medium w-full"
+                  className={editSelectClass}
                   value={editFields.processStatus || ''}
                   onChange={e => setEditFields(f => ({ ...f, processStatus: e.target.value }))}
                 >
@@ -191,13 +204,16 @@ export default function WorkorderDetailPage({ params }) {
                   <option value="เสร็จสิ้น">เสร็จสิ้น</option>
                 </select>
               ) : (
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-3 py-1 rounded-full text-xs font-medium inline-flex items-center gap-2 ${
                   workorder.processStatus === 'อยู่ในแผนงาน' ? 'bg-blue-100 text-blue-800' :
                   workorder.processStatus === 'ช่างกำลังดำเนินการ' ? 'bg-yellow-100 text-yellow-800' :
                   workorder.processStatus === 'เสร็จสิ้น' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
                   {safe(workorder.processStatus)}
+                  {workorder.processStatus === 'เสร็จสิ้น' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  )}
                 </span>
               )}
             </div>
@@ -232,10 +248,11 @@ export default function WorkorderDetailPage({ params }) {
               <label className="block font-medium text-gray-600 mb-1">รายละเอียดงาน</label>
               {editMode ? (
                 <textarea
-                  className="text-sm text-gray-800 bg-blue-50 p-2 rounded w-full"
+                  className={editTextareaClass}
                   value={typeof editFields.detail === 'string' ? editFields.detail : (editFields.detail ? String(editFields.detail) : '')}
                   onChange={e => setEditFields(f => ({ ...f, detail: e.target.value }))}
                   rows={2}
+                  placeholder="กรอกรายละเอียดงาน..."
                 />
               ) : (
                 <p className="text-gray-800 leading-relaxed text-xs bg-blue-50 p-2 rounded">{workorder.detail}</p>
@@ -245,10 +262,11 @@ export default function WorkorderDetailPage({ params }) {
               <label className="block font-medium text-gray-600 mb-1">หมายเหตุ</label>
               {editMode ? (
                 <textarea
-                  className="text-sm text-gray-800 bg-yellow-50 p-2 rounded w-full"
+                  className={editTextareaClass}
                   value={typeof editFields.note === 'string' ? editFields.note : (editFields.note ? String(editFields.note) : '')}
                   onChange={e => setEditFields(f => ({ ...f, note: e.target.value }))}
                   rows={2}
+                  placeholder="กรอกหมายเหตุเพิ่มเติม..."
                 />
               ) : (
                 <p className="text-gray-800 leading-relaxed text-xs bg-yellow-50 p-2 rounded">{workorder.note}</p>
@@ -266,9 +284,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="text-sm font-semibold text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.name === 'string' ? editFields.name : (editFields.name ? String(editFields.name) : '')}
                   onChange={e => setEditFields(f => ({ ...f, name: e.target.value }))}
+                  placeholder="กรอกชื่อลูกค้า..."
                 />
               ) : (
                 <div className="text-base font-semibold text-gray-800 bg-gray-50 p-2 rounded">{safe(workorder.name)}</div>
@@ -279,9 +298,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="text-sm font-medium text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.contact === 'string' ? editFields.contact : (editFields.contact ? String(editFields.contact) : '')}
                   onChange={e => setEditFields(f => ({ ...f, contact: e.target.value }))}
+                  placeholder="กรอกเบอร์โทร..."
                 />
               ) : (
                 <div className="text-base font-medium text-gray-800 bg-gray-50 p-2 rounded">
@@ -294,9 +314,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="text-sm font-medium text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.village === 'string' ? editFields.village : (editFields.village ? String(editFields.village) : '')}
                   onChange={e => setEditFields(f => ({ ...f, village: e.target.value }))}
+                  placeholder="กรอกหมู่บ้าน..."
                 />
               ) : (
                 <div className="text-base font-medium text-gray-800 bg-gray-50 p-2 rounded">{safe(workorder.village)}</div>
@@ -306,10 +327,11 @@ export default function WorkorderDetailPage({ params }) {
               <label className="block font-medium text-gray-600 mb-1">ที่อยู่</label>
               {editMode ? (
                 <textarea
-                  className="text-sm text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editTextareaClass}
                   value={typeof editFields.address === 'string' ? editFields.address : (editFields.address ? String(editFields.address) : '')}
                   onChange={e => setEditFields(f => ({ ...f, address: e.target.value }))}
                   rows={2}
+                  placeholder="กรอกที่อยู่..."
                 />
               ) : (
                 workorder.address && (
@@ -322,9 +344,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="text-sm text-gray-800 bg-gray-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.mapLink === 'string' ? editFields.mapLink : (editFields.mapLink ? String(editFields.mapLink) : '')}
                   onChange={e => setEditFields(f => ({ ...f, mapLink: e.target.value }))}
+                  placeholder="กรอกลิงก์แผนที่..."
                 />
               ) : (
                 workorder.mapLink && (
@@ -346,36 +369,49 @@ export default function WorkorderDetailPage({ params }) {
             <div className="mb-4">
               <label className="block font-medium text-gray-600 mb-2">สถานะการดำเนินงาน</label>
               <ol className="relative border-l-2 border-gray-300 ml-3">
-                {[
-                  { key: 'อยู่ในแผนงาน', color: 'bg-blue-500', status: 'อยู่ในแผนงาน' },
-                  { key: 'ช่างกำลังดำเนินการ', color: 'bg-yellow-500', status: 'ช่างกำลังดำเนินการ' },
-                  { key: 'เสร็จสิ้น', color: 'bg-green-500', status: 'เสร็จสิ้น' }
-                ].map((step, idx) => {
+                {["อยู่ในแผนงาน", "ช่างกำลังดำเนินการ", "เสร็จสิ้น"].map((step, idx) => {
                   const statusMap = {
-                    'อยู่ในแผนงาน': 0,
-                    'ช่างกำลังดำเนินการ': 1,
-                    'เสร็จสิ้น': 2
+                    "อยู่ในแผนงาน": 0,
+                    "ช่างกำลังดำเนินการ": 1,
+                    "เสร็จสิ้น": 2
                   };
-                  const currentIdx = statusMap[workorder.processStatus] !== undefined
-                    ? statusMap[workorder.processStatus]
-                    : -1;
+                  const currentIdx = statusMap[editMode ? editFields.processStatus : workorder.processStatus] ?? -1;
                   const isActive = idx === currentIdx;
                   const isCompleted = idx < currentIdx;
                   return (
-                    <li key={step.key} className="mb-6 ml-4">
+                    <li key={step} className="mb-6 ml-4">
                       <div className="flex items-center">
                         <span
-                          className={`flex items-center justify-center w-5 h-5 rounded-full border-2
-                            ${isCompleted ? step.color + ' border-transparent' : isActive ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'}
-                          `}
+                          className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all duration-200
+                            ${isCompleted ? 'bg-green-500 border-transparent' : isActive ? 'border-blue-500 bg-white' : 'border-gray-300 bg-white'}`}
                         >
-                          {isCompleted && (
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                          {/* ติ๊กถูกเมื่อ completed หรือ active ที่เป็น "เสร็จสิ้น" */}
+                          {(isCompleted || (isActive && step === 'เสร็จสิ้น')) && (
+                            <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </span>
-                        <span className={`ml-3 text-xs font-medium ${isActive ? 'text-blue-700 font-semibold' : isCompleted ? 'text-green-700' : 'text-gray-500'}`}>{step.key}</span>
+                        <span className={`ml-3 text-xs font-medium ${isActive ? 'text-blue-700 font-semibold' : isCompleted ? 'text-green-700' : 'text-gray-500'}`}>{step}</span>
+                        {/* แสดงไอคอน "ถึงแล้ว" เมื่อสถานะเป็น "เสร็จสิ้น" (active) */}
+                        {isActive && step === 'เสร็จสิ้น' && (
+                          <span className="ml-2 text-green-600 flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        )}
+                        {editMode && isActive && (
+                          <span className="ml-2 text-xs text-yellow-600">(กำลังเลือก)</span>
+                        )}
+                        {editMode && (
+                          <button
+                            className={`ml-4 px-2 py-1 rounded text-xs border ${isActive ? 'bg-yellow-100 border-yellow-400' : 'bg-gray-50 border-gray-300'} hover:bg-yellow-200`}
+                            type="button"
+                            onClick={() => setEditFields(f => ({ ...f, processStatus: step }))}
+                            disabled={isActive}
+                          >เลือก</button>
+                        )}
                       </div>
                     </li>
                   );
@@ -443,9 +479,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="w-full text-center bg-indigo-100 text-indigo-800 rounded px-2 py-1 text-sm font-bold"
+                  className={editInputClass}
                   value={typeof editFields.caseNumber === 'string' ? editFields.caseNumber : (editFields.caseNumber ? String(editFields.caseNumber) : '')}
                   onChange={e => setEditFields(f => ({ ...f, caseNumber: e.target.value }))}
+                  placeholder="กรอกเคสที่..."
                 />
               ) : (
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold flex items-center justify-center">{safe(workorder.caseNumber, '?')}</div>
@@ -456,9 +493,10 @@ export default function WorkorderDetailPage({ params }) {
               {editMode ? (
                 <input
                   type="text"
-                  className="text-sm font-semibold text-indigo-600 bg-indigo-50 p-2 rounded w-full"
+                  className={editInputClass}
                   value={typeof editFields.beauticianName === 'string' ? editFields.beauticianName : (editFields.beauticianName ? String(editFields.beauticianName) : '')}
                   onChange={e => setEditFields(f => ({ ...f, beauticianName: e.target.value }))}
+                  placeholder="กรอกชื่อช่าง..."
                 />
               ) : (
                 <div className="text-sm font-semibold text-indigo-600 bg-indigo-50 p-2 rounded">{safe(workorder.beauticianName || workorder.responsible)}</div>
