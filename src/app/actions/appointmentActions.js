@@ -90,6 +90,16 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         const newRef = db.collection('appointments').doc();
         await newRef.set(finalAppointmentData);
 
+        // อัพเดต address ใน customers อัตโนมัติเมื่อมีการจองใหม่
+        if (appointmentData.customerInfo?.address && appointmentData.userId) {
+            try {
+                const customerRef = db.collection('customers').doc(appointmentData.userId);
+                await customerRef.update({ address: appointmentData.customerInfo.address, updatedAt: FieldValue.serverTimestamp() });
+            } catch (err) {
+                console.error('Auto update customer address error:', err);
+            }
+        }
+
         await createOrUpdateCalendarEvent(newRef.id, finalAppointmentData);
 
         if (appointmentData.customerInfo && (appointmentData.userId || appointmentData.customerInfo.phone)) {
