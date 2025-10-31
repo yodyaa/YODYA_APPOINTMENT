@@ -4,6 +4,7 @@ import { getShopProfile } from './settingsActions';
 export async function createPaymentFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, paymentInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
+    const customerAddress = customerInfo?.address || '-';
     const totalAmount = Number(paymentInfo?.totalAmount || paymentInfo?.totalPrice || serviceInfo?.price || 0);
     const formattedAmount = new Intl.NumberFormat('th-TH').format(totalAmount);
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
@@ -118,18 +119,19 @@ export async function createPaymentFlexTemplate(appointmentData) {
                                 contents: [
                                     {
                                         type: "text",
-                                        text: "รหัสการจอง",
+                                        text: "ที่อยู่ลูกค้า",
                                         size: "sm",
                                         color: "#666666",
                                         flex: 2
                                     },
                                     {
                                         type: "text",
-                                        text: shortId,
+                                        text: customerAddress,
                                         size: "sm",
                                         color: "#333333",
                                         flex: 3,
-                                        align: "end"
+                                        align: "end",
+                                        wrap: true
                                     }
                                 ]
                             }
@@ -499,6 +501,7 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
         year: 'numeric'
     });
     const formattedPrice = price ? new Intl.NumberFormat('th-TH').format(Number(price)) : null;
+    const customerAddress = customerInfo?.address || '-';
     
     return {
         type: "flex",
@@ -657,7 +660,29 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
                                         align: "end"
                                     }
                                 ]
-                            }] : [])
+                            }] : []),
+                            {
+                                type: "box",
+                                layout: "horizontal",
+                                contents: [
+                                    {
+                                        type: "text",
+                                        text: "ที่อยู่ลูกค้า",
+                                        size: "sm",
+                                        color: "#666666",
+                                        flex: 2
+                                    },
+                                    {
+                                        type: "text",
+                                        text: customerAddress,
+                                        size: "sm",
+                                        color: "#333333",
+                                        flex: 3,
+                                        align: "end",
+                                        wrap: true
+                                    }
+                                ]
+                            }
                         ],
                         spacing: "sm",
                         margin: "lg",
@@ -916,6 +941,7 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
     const { id, serviceInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const customerAddress = customerInfo?.address || '-';
     const safeId = (id || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
@@ -1025,18 +1051,19 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
                                 contents: [
                                     {
                                         type: "text",
-                                        text: "รหัสการจอง",
+                                        text: "ที่อยู่ลูกค้า",
                                         size: "sm",
                                         color: "#666666",
                                         flex: 2
                                     },
                                     {
                                         type: "text",
-                                        text: shortId,
+                                        text: customerAddress,
                                         size: "sm",
                                         color: "#333333",
                                         flex: 3,
-                                        align: "end"
+                                        align: "end",
+                                        wrap: true
                                     }
                                 ]
                             }
@@ -1107,6 +1134,7 @@ export async function createNewBookingFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, serviceName: svcName, customerInfo, date, time } = appointmentData || {};
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const serviceName = svcName || serviceInfo?.name || 'บริการของคุณ';
+    const customerAddress = customerInfo?.address || '-';
     const safeId = (id || appointmentId || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = date ? new Date(date).toLocaleDateString('th-TH', {
@@ -1216,18 +1244,19 @@ export async function createNewBookingFlexTemplate(appointmentData) {
                                 contents: [
                                     {
                                         type: "text",
-                                        text: "รหัสการจอง",
+                                        text: "ที่อยู่ลูกค้า",
                                         size: "sm",
                                         color: "#666666",
                                         flex: 2
                                     },
                                     {
                                         type: "text",
-                                        text: shortId,
+                                        text: customerAddress,
                                         size: "sm",
                                         color: "#333333",
                                         flex: 3,
-                                        align: "end"
+                                        align: "end",
+                                        wrap: true
                                     }
                                 ]
                             }
@@ -1805,6 +1834,28 @@ export async function createPaymentConfirmationFlexTemplate(appointmentData) {
                                         color: "#333333",
                                         flex: 3,
                                         align: "end"
+                                    }
+                                ]
+                            },
+                            {
+                                type: "box",
+                                layout: "horizontal",
+                                contents: [
+                                    {
+                                        type: "text",
+                                        text: "ที่อยู่ลูกค้า",
+                                        size: "sm",
+                                        color: "#666666",
+                                        flex: 2
+                                    },
+                                    {
+                                        type: "text",
+                                        text: customerAddress,
+                                        size: "sm",
+                                        color: "#333333",
+                                        flex: 3,
+                                        align: "end",
+                                        wrap: true
                                     }
                                 ]
                             }
