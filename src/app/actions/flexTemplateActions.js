@@ -1135,8 +1135,6 @@ export async function createNewBookingFlexTemplate(appointmentData) {
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const serviceName = svcName || serviceInfo?.name || 'บริการของคุณ';
     const customerAddress = customerInfo?.address || '-';
-    const safeId = (id || appointmentId || '').toString();
-    const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = date ? new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
         month: 'short',
