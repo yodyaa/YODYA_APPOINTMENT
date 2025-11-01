@@ -117,7 +117,8 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
                 date: date,
                 time: time,
                 appointmentId: newRef.id,
-                id: newRef.id
+                id: newRef.id,
+                customerInfo: finalAppointmentData.customerInfo
             });
         }
 

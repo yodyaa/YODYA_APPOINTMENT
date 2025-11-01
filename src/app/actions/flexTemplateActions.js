@@ -130,7 +130,7 @@ export async function createPaymentFlexTemplate(appointmentData) {
                                         size: "sm",
                                         color: "#333333",
                                         flex: 3,
-                                        align: "end",
+                                            align: "start",
                                         wrap: true
                                     }
                                 ]
@@ -942,6 +942,7 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
     const customerAddress = customerInfo?.address || '-';
+    
     const safeId = (id || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
@@ -1133,8 +1134,11 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
 export async function createNewBookingFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, serviceName: svcName, customerInfo, date, time } = appointmentData || {};
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = svcName || serviceInfo?.name || 'บริการของคุณ';
     const customerAddress = customerInfo?.address || '-';
+    // Debug log
+    console.log('[DEBUG] customerInfo:', customerInfo);
+    console.log('[DEBUG] customerAddress:', customerAddress);
+    const serviceName = svcName || serviceInfo?.name || 'บริการของคุณ';
     const appointmentDate = date ? new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
         month: 'short',
