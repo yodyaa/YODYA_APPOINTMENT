@@ -22,7 +22,7 @@ export default function BookingHistoryPage() {
         }
 
         setLoading(true);
-        
+
         // ใช้ onSnapshot เพื่อ realtime updates
         const bookingsQuery = query(
             collection(db, 'appointments'),
@@ -30,12 +30,28 @@ export default function BookingHistoryPage() {
             where("status", "in", ["completed", "cancelled"]),
             orderBy("appointmentInfo.dateTime", "desc")
         );
-        
+
         const unsubscribe = onSnapshot(
             bookingsQuery,
-            (querySnapshot) => {
+            async (querySnapshot) => {
                 const bookingsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setHistoryBookings(bookingsData);
+                // ดึง workorderInfo สำหรับแต่ละ booking ถ้ามี workorderId
+                const mergedBookings = await Promise.all(bookingsData.map(async booking => {
+                    if (booking.workorderId) {
+                        try {
+                            const workorderDoc = await getDocs(query(collection(db, 'workorders'), where('id', '==', booking.workorderId)));
+                            if (!workorderDoc.empty) {
+                                // ใช้ข้อมูลจาก workorder ตัวแรกที่เจอ
+                                const workorderInfo = workorderDoc.docs[0].data();
+                                return { ...booking, workorderInfo };
+                            }
+                        } catch (err) {
+                            console.warn('ไม่สามารถดึง workorderInfo:', err);
+                        }
+                    }
+                    return booking;
+                }));
+                setHistoryBookings(mergedBookings);
                 setLoading(false);
             },
             (error) => {
