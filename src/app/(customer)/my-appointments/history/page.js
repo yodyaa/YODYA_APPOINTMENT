@@ -35,22 +35,21 @@ export default function BookingHistoryPage() {
             bookingsQuery,
             async (querySnapshot) => {
                 const bookingsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // ดึง workorderInfo สำหรับแต่ละ booking ถ้ามี workorderId
-                const mergedBookings = await Promise.all(bookingsData.map(async booking => {
-                    if (booking.workorderId) {
-                        try {
-                            const workorderDoc = await getDocs(query(collection(db, 'workorders'), where('id', '==', booking.workorderId)));
-                            if (!workorderDoc.empty) {
-                                // ใช้ข้อมูลจาก workorder ตัวแรกที่เจอ
-                                const workorderInfo = workorderDoc.docs[0].data();
-                                return { ...booking, workorderInfo };
-                            }
-                        } catch (err) {
-                            console.warn('ไม่สามารถดึง workorderInfo:', err);
-                        }
+                // ดึง workorderInfo โดยใช้ bookingId (id ของ appointment)
+                const bookingIds = bookingsData.map(b => b.id);
+                let workorderMap = {};
+                if (bookingIds.length > 0) {
+                    try {
+                        const workordersSnap = await getDocs(query(collection(db, 'workorders'), where('bookingId', 'in', bookingIds)));
+                        workordersSnap.forEach(doc => {
+                            const data = doc.data();
+                            if (data.bookingId) workorderMap[data.bookingId] = data;
+                        });
+                    } catch (err) {
+                        console.warn('ไม่สามารถดึง workorders:', err);
                     }
-                    return booking;
-                }));
+                }
+                const mergedBookings = bookingsData.map(booking => ({ ...booking, workorderInfo: workorderMap[booking.id] || undefined }));
                 setHistoryBookings(mergedBookings);
                 setLoading(false);
             },
