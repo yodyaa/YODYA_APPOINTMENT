@@ -28,7 +28,7 @@ export default function AdminCustomersPage() {
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 20;
   const router = useRouter();
   const { showToast } = useToast();
 
@@ -172,8 +172,6 @@ export default function AdminCustomersPage() {
                 <th className="py-2 px-4 text-left">ชื่อ</th>
                 <th className="py-2 px-4 text-left">เบอร์โทร</th>
                 <th className="py-2 px-4 text-left">ที่อยู่</th>
-                <th className="py-2 px-4 text-left">สะสมแต้ม</th>
-                <th className="py-2 px-4 text-left">เครดิต</th>
                 <th className="py-2 px-4 text-left">LINE</th>
                 <th className="py-2 px-4 text-left">สร้างเมื่อ</th>
                 <th className="py-2 px-4 text-left">ดำเนินการ</th>
@@ -185,16 +183,6 @@ export default function AdminCustomersPage() {
                   <td className="py-2 px-4">{c.fullName || '-'}</td>
                   <td className="py-2 px-4">{c.phone || '-'}</td>
                   <td className="py-2 px-4" title={c.address || ''}>{shortenAddress(c.address)}</td>
-                  <td className="py-2 px-4">
-                    <span className="text-green-600 font-semibold">
-                      {(c.points || c.totalPoints || 0) > 0 ? `${c.points || c.totalPoints || 0} แต้ม` : 'ไม่มีแต้ม'}
-                    </span>
-                  </td>
-                  <td className="py-2 px-4">
-                    <span className="text-blue-600 font-semibold">
-                      {(c.credit || 0) > 0 ? `${(c.credit || 0).toLocaleString()} บาท` : 'ไม่มีเครดิต'}
-                    </span>
-                  </td>
                   <td className="py-2 px-4">
                     {c.userId ? (
                       <button
@@ -234,20 +222,37 @@ export default function AdminCustomersPage() {
         </div>
       )}
       {totalPages > 1 && (
-  <div className="flex justify-center items-center gap-2 mt-6">
-    <button
-      className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-      onClick={() => setPage(page - 1)}
-      disabled={page === 1}
-    >ก่อนหน้า</button>
-    <span className="mx-2">หน้า {page} / {totalPages}</span>
-    <button
-      className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-      onClick={() => setPage(page + 1)}
-      disabled={page === totalPages}
-    >ถัดไป</button>
-  </div>
-)}
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+          >ก่อนหน้า</button>
+          {/* Pagination numbers, max 3 numbers */}
+          {(() => {
+            let start = Math.max(1, page - 1);
+            let end = Math.min(totalPages, start + 2);
+            if (end - start < 2) start = Math.max(1, end - 2);
+            const pages = [];
+            for (let i = start; i <= end; i++) {
+              pages.push(
+                <button
+                  key={i}
+                  className={`px-3 py-1 rounded ${i === page ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
+                  onClick={() => setPage(i)}
+                  disabled={i === page}
+                >{i}</button>
+              );
+            }
+            return pages;
+          })()}
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+          >ถัดไป</button>
+        </div>
+      )}
     </div>
   );
 }

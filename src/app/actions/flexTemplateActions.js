@@ -491,17 +491,52 @@ export async function createReviewThankYouFlexTemplate(reviewData) {
  * สร้าง Flex Message สำหรับการยืนยันการจอง
  */
 export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
-    const { id, serviceInfo, customerInfo, date, time, appointmentInfo, gardenerName, caseNumber, price } = appointmentData;
-    const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
-    const beauticianName = appointmentInfo?.beauticianInfo?.firstName || appointmentInfo?.beautician || gardenerName || 'ยอดหญ้า';
-    const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
-    const formattedPrice = price ? new Intl.NumberFormat('th-TH').format(Number(price)) : null;
-    const customerAddress = customerInfo?.address || '-';
+        const {
+            id,
+            serviceInfo,
+            customerInfo,
+            date,
+            time,
+            appointmentInfo,
+            gardenerName,
+            responsible,
+            address,
+            caseNumber,
+            price,
+            name,
+            workorder,
+            village,
+            contact,
+            payment,
+            mapLink,
+            adminNote,
+            userIDline,
+            bookingId,
+            createdAt
+        } = appointmentData;
+        // ใช้ข้อมูลจากการสร้างงาน (workorder) เป็นหลัก
+        const customerName = name || customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
+        const serviceName = workorder || serviceInfo?.name || 'บริการของคุณ';
+        let beauticianName = responsible || gardenerName;
+        if (!beauticianName || beauticianName === '' || beauticianName === undefined) beauticianName = 'ยังไม่ระบุ';
+        const appointmentDate = date ? new Date(date).toLocaleDateString('th-TH', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }) : '-';
+        const formattedPrice = price ? new Intl.NumberFormat('th-TH').format(Number(price)) : null;
+        // ใช้ address จากการสร้างงาน (workorder) เป็นหลัก
+        let customerAddress = '-';
+        console.log('[Flex Debug] address:', address, 'customerInfo:', customerInfo);
+        if (address && typeof address === 'string' && address.trim() !== '') {
+            customerAddress = address;
+            console.log('[Flex Debug] ใช้ address จาก workorder:', customerAddress);
+        } else if (customerInfo?.address && customerInfo.address.trim() !== '') {
+            customerAddress = customerInfo.address;
+            console.log('[Flex Debug] ใช้ address จาก customerInfo:', customerAddress);
+        } else {
+            console.log('[Flex Debug] ไม่มี address ใช้ default:', customerAddress);
+        }
     
     return {
         type: "flex",

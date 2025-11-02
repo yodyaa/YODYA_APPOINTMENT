@@ -470,29 +470,39 @@ export default function CreateWorkorderPage() {
       const customer = bookingCustomers[booking.id];
       // ใช้ชื่อบริการจาก serviceInfo.name ก่อน fallback เป็น serviceName หรือ 'บริการทั่วไป'
       const serviceName = booking.serviceInfo?.name || booking.serviceName || "บริการทั่วไป";
+      // ที่อยู่: ใช้ booking.address ก่อน, ถ้าไม่มี fallback ตาม card UI
+      let address = booking.address;
+      if (!address) {
+        address = booking.customerInfo?.address || customer?.address || "";
+      }
+      // ถ้ายังไม่เลือกช่าง ให้ใช้ "ยังไม่ระบุ"
+      let beauticianName = "ยังไม่ระบุ";
+      if (gardener) {
+        beauticianName = gardener.fullName || gardener.name || (gardener.firstName ? gardener.firstName + ' ' + (gardener.lastName || '') : '') || "ยังไม่ระบุ";
+      }
       const docRef = await addDoc(collection(db, "workorders"), {
         idKey: booking.id || new Date().getTime().toString(),
         workorder: serviceName,
         processStatus: "ใหม่",
-        responsible: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || "",
+        responsible: beauticianName,
         date: date || booking.date || new Date().toISOString().slice(0, 10),
         time: time || booking.time || "",
         price: price || booking.price || booking.serviceInfo?.price || "",
-        name: booking.fullName || booking.customerName || customer?.fullName || "",
+        name: booking.fullName || booking.customerName || "",
         detail: `บริการ: ${booking.serviceName || ''}${booking.addOnNames ? ' | เสริม: ' + booking.addOnNames.join(', ') : ''}`,
-        note: booking.note || customer?.note || "",
-        address: customer?.address || booking.address || "",
-        village: customer?.village || booking.village || "",
-        contact: booking.phone || customer?.phone || "",
+        note: booking.note || "",
+        address: address,
+        village: booking.village || booking.customerInfo?.village || customer?.village || "",
+        contact: booking.phone || booking.customerInfo?.phone || customer?.phone || "",
         payment: "",
-        mapLink: customer?.mapLink || "",
+        mapLink: "",
         adminNote: "",
         admin: "",
         status: "confirmed",
         userIDresponsible: "",
-        userIDline: booking.lineUserId || customer?.userId || "",
+        userIDline: booking.lineUserId || "",
         gardenerId: gardenerId,
-        gardenerName: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || "",
+        gardenerName: beauticianName,
         caseNumber: caseNumber,
         bookingId: booking.id,
         createdAt: new Date().toISOString()
@@ -529,10 +539,15 @@ export default function CreateWorkorderPage() {
             time: time || booking.time || '',
             appointmentId: booking?.id || '',
             id: booking?.id || '',
-            // ข้อมูลจากฟอร์ม (ที่อาจเปลี่ยนแปลง)
-            gardenerName: gardener?.fullName || gardener?.name || gardener?.firstName + ' ' + (gardener?.lastName || '') || '',
+            // ใช้ beauticianName ที่สร้างไว้แล้ว (จะเป็น "ยังไม่ระบุ" ถ้าไม่มีช่าง)
+            gardenerName: beauticianName,
+            responsible: beauticianName,
             caseNumber: caseNumber || '',
             price: price || booking.price || booking.serviceInfo?.price || '',
+            // เพิ่ม address จาก workorder ที่สร้าง
+            address: address,
+            name: booking.fullName || booking.customerName || '',
+            workorder: serviceName,
           };
           // เพิ่ม customerInfo ถ้ามี
           if (booking?.customerInfo?.fullName || booking?.fullName || customer?.fullName) {
@@ -800,7 +815,7 @@ export default function CreateWorkorderPage() {
                   const bookingLineId = b.lineUserId || b.customerInfo?.customerId || '';
                   const displayName = bookingName || customer?.fullName || customer?.name || 'ไม่ระบุชื่อ';
                   const displayPhone = bookingPhone || customer?.phone || 'ไม่ระบุเบอร์';
-                  const displayAddress = customer?.address || b.address || b.customerInfo?.address || 'ไม่ระบุที่อยู่';
+                  const displayAddress = b.address || b.customerInfo?.address || 'ไม่ระบุที่อยู่';
                   const displayVillage = customer?.village || b.village || b.customerInfo?.village || 'ไม่ระบุหมู่บ้าน';
                   const displayNote = b.note || b.customerInfo?.note || customer?.note || 'ไม่มีหมายเหตุ';
                   const displayLineId = bookingLineId || customer?.userId || customer?.customerId || 'ไม่มี LINE ID';

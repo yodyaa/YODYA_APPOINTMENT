@@ -51,7 +51,8 @@ export default function WorkorderDetailPage({ params }) {
     }
   }, [workorder, editMode]);
 
-  const safe = (val, fallback = "-") => (val !== undefined && val !== null && val !== "" ? val : fallback);
+  // safe: คืนค่า "ยังไม่ระบุ" ถ้า undefined/null/empty string
+  const safe = (val, fallback = "ยังไม่ระบุ") => (val !== undefined && val !== null && val !== "" ? val : fallback);
 
   // เพิ่มกรอบ border เหลืองและ placeholder ให้ทุก input/textarea/select ในข้อมูลลูกค้าและข้อมูลบริการที่สามารถแก้ไขได้ทั้งหมด
   const editInputClass = "font-semibold text-gray-800 bg-yellow-50 border-2 border-yellow-400 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-yellow-500";
@@ -154,7 +155,17 @@ export default function WorkorderDetailPage({ params }) {
                   if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบงานนี้? การกระทำนี้ไม่สามารถยกเลิกได้')) {
                     try {
                       const { deleteDoc } = await import('firebase/firestore');
+                      // ลบงาน
                       await deleteDoc(doc(db, 'workorders', workorder.id));
+                      // ถ้ามี bookingId ให้ลบการจองด้วย
+                      if (workorder.bookingId) {
+                        try {
+                          await deleteDoc(doc(db, 'bookings', workorder.bookingId));
+                        } catch (err) {
+                          // ไม่ต้องแจ้ง error ถ้าลบ booking ไม่สำเร็จ
+                          console.warn('ลบการจองไม่สำเร็จ:', err);
+                        }
+                      }
                       alert('ลบงานสำเร็จ!');
                       router.push('/workorder');
                     } catch (err) {
@@ -499,7 +510,7 @@ export default function WorkorderDetailPage({ params }) {
                   placeholder="กรอกชื่อช่าง..."
                 />
               ) : (
-                <div className="text-sm font-semibold text-indigo-600 bg-indigo-50 p-2 rounded">{safe(workorder.beauticianName || workorder.responsible)}</div>
+                <div className="text-sm font-semibold text-indigo-600 bg-indigo-50 p-2 rounded">{safe(workorder.beauticianName || workorder.responsible, "ยังไม่ระบุ")}</div>
               )}
             </div>
             {workorder.bookingId && (

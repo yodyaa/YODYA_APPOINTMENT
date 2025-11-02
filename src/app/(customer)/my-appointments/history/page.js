@@ -73,13 +73,16 @@ export default function BookingHistoryPage() {
                         </div>
                     ) : (
                         <div className="space-y-5">
-                            {historyBookings.map(job => (
-                                <HistoryCard
-                                    key={job.id}
-                                    appointment={job}
-                                    onBookAgain={handleBookAgain}
-                                />
-                            ))}
+                            {historyBookings.map(job => {
+                                console.log('BookingHistoryPage appointment:', job);
+                                return (
+                                    <HistoryCard
+                                        key={job.id}
+                                        appointment={job}
+                                        onBookAgain={handleBookAgain}
+                                    />
+                                );
+                            })}
                         </div>
                     )}
                 </main>

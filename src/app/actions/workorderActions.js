@@ -78,13 +78,21 @@ export async function sendWorkorderConfirmedFlex(userId, workorderData) {
     const payload = {
       id: workorderData.id || workorderData.idKey || '',
       serviceInfo: { name: workorderData.serviceName || workorderData.workorder || 'งานบริการ' },
-      customerInfo: { fullName: workorderData.name || 'ลูกค้า' },
+      customerInfo: { 
+        fullName: workorderData.name || workorderData.customerInfo?.fullName || 'ลูกค้า',
+        phone: workorderData.contact || workorderData.customerInfo?.phone || '',
+        address: workorderData.address || workorderData.customerInfo?.address || ''
+      },
       date: workorderData.date,
       time: workorderData.time || '',
       appointmentInfo: {},
       gardenerName: workorderData.responsible || workorderData.gardenerName || '',
+      responsible: workorderData.responsible || workorderData.gardenerName || '',
+      address: workorderData.address || '',
       caseNumber: workorderData.caseNumber || '',
-      price: workorderData.price || workorderData.payment || ''
+      price: workorderData.price || workorderData.payment || '',
+      name: workorderData.name || '',
+      workorder: workorderData.workorder || workorderData.serviceName || ''
     };
     const result = await sendAppointmentConfirmedFlexMessage(userId, payload);
     console.log('[sendWorkorderConfirmedFlex] ส่งสำเร็จ');
