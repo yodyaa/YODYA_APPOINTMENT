@@ -488,7 +488,7 @@ export default function CreateWorkorderPage() {
         date: date || booking.date || new Date().toISOString().slice(0, 10),
         time: time || booking.time || "",
         price: price || booking.price || booking.serviceInfo?.price || "",
-        name: booking.fullName || booking.customerName || "",
+        name: booking.customerInfo?.fullName || booking.fullName || booking.customerName || customer?.fullName || "",
         detail: `บริการ: ${booking.serviceName || ''}${booking.addOnNames ? ' | เสริม: ' + booking.addOnNames.join(', ') : ''}`,
         note: booking.note || "",
         address: address,
@@ -546,7 +546,7 @@ export default function CreateWorkorderPage() {
             price: price || booking.price || booking.serviceInfo?.price || '',
             // เพิ่ม address จาก workorder ที่สร้าง
             address: address,
-            name: booking.fullName || booking.customerName || '',
+            name: booking.customerInfo?.fullName || booking.fullName || booking.customerName || customer?.fullName || '',
             workorder: serviceName,
           };
           // เพิ่ม customerInfo ถ้ามี
@@ -577,7 +577,7 @@ export default function CreateWorkorderPage() {
       // แจ้งเตือนแอดมินเมื่อสร้างงานจากนัดหมาย
       try {
         const notificationData = {
-          customerName: booking.fullName || booking.customerInfo?.fullName || customer?.fullName || 'ลูกค้า',
+          customerName: booking.customerInfo?.fullName || booking.fullName || customer?.fullName || 'ลูกค้า',
           serviceName: serviceName,
           appointmentDate: date || booking.date || new Date().toISOString().slice(0, 10),
           appointmentTime: time || booking.time || '',
