@@ -6,7 +6,7 @@ import { notifyStatusChange, notifyPaymentStatusChange } from "@/app/actions/not
 import { sendServiceCompletedFlexMessage, sendServiceInProgressFlexMessage } from "@/app/actions/lineFlexActions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/app/lib/firebase";
-import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
 
 export default function WorkorderAdminPage() {
@@ -109,55 +109,79 @@ export default function WorkorderAdminPage() {
   const selectedDayAppointments = appointments.filter(a => a.date === selectedDateStr);
 
   useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        // ดึงข้อมูลงาน
-        const workordersSnapshot = await getDocs(collection(db, "workorders"));
-        const workordersData = workordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setWorkorders(workordersData);
-
-        // ดึงข้อมูลบริการ
-        const servicesSnapshot = await getDocs(collection(db, "services"));
-        const servicesData = servicesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setServices(servicesData);
-
-        // ดึงข้อมูลการนัดหมาย - ใช้โครงสร้างมาตรฐาน
-        const appointmentsSnapshot = await getDocs(collection(db, "appointments"));
-        const appointmentsData = appointmentsSnapshot.docs.map((doc) => ({
+    setLoading(true);
+    // subscribe workorders
+    const unsubWorkorders = onSnapshot(
+      collection(db, "workorders"),
+      (snapshot) => {
+        setWorkorders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoading(false);
+      },
+      (err) => {
+        setWorkorders([]);
+        setLoading(false);
+      }
+    );
+    // subscribe services
+    const unsubServices = onSnapshot(
+      collection(db, "services"),
+      (snapshot) => {
+        setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      },
+      (err) => {
+        setServices([]);
+      }
+    );
+    // subscribe appointments
+    const unsubAppointments = onSnapshot(
+      collection(db, "appointments"),
+      (snapshot) => {
+        setAppointments(snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          // ใช้โครงสร้างมาตรฐาน customerInfo, serviceInfo, appointmentInfo, paymentInfo
-          type: 'appointment', // เพิ่ม type เพื่อแยกประเภท
+          type: 'appointment',
           caseNumber: doc.data().caseNumber || doc.data().id?.substring(0,3),
-        }));
-        setAppointments(appointmentsData);
-        // ดึงการตั้งค่าจำนวนช่างรายวัน
-        const dailySettingsSnapshot = await getDocs(collection(db, "dailyStaffSettings"));
+        })));
+      },
+      (err) => {
+        setAppointments([]);
+      }
+    );
+    // subscribe dailyStaffSettings
+    const unsubDailyStaff = onSnapshot(
+      collection(db, "dailyStaffSettings"),
+      (snapshot) => {
         const dailySettingsData = {};
-        dailySettingsSnapshot.docs.forEach(doc => {
+        snapshot.docs.forEach(doc => {
           dailySettingsData[doc.id] = doc.data().staffCount || 3;
         });
         setDailyStaffSettings(dailySettingsData);
-
-        // ดึงการตั้งค่า productivity รายวัน
-        const dailyProductivitySnapshot = await getDocs(collection(db, "dailyProductivitySettings"));
+      },
+      (err) => {
+        setDailyStaffSettings({});
+      }
+    );
+    // subscribe dailyProductivitySettings
+    const unsubDailyProductivity = onSnapshot(
+      collection(db, "dailyProductivitySettings"),
+      (snapshot) => {
         const dailyProductivityData = {};
-        dailyProductivitySnapshot.docs.forEach(doc => {
+        snapshot.docs.forEach(doc => {
           dailyProductivityData[doc.id] = doc.data().productivityThreshold || 1000;
         });
         setDailyProductivitySettings(dailyProductivityData);
-
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setWorkorders([]);
-        setServices([]);
-        setAppointments([]);
-      } finally {
-        setLoading(false);
+      },
+      (err) => {
+        setDailyProductivitySettings({});
       }
+    );
+    return () => {
+      unsubWorkorders();
+      unsubServices();
+      unsubAppointments();
+      unsubDailyStaff();
+      unsubDailyProductivity();
     };
-    fetchAllData();
   }, []);
 
   // ฟังก์ชันช่วยจัดการข้อมูลที่อาจไม่มี
