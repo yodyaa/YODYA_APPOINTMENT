@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/app/lib/firebase';
-import { collection, getDocs, query, orderBy, doc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, getDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -56,6 +56,27 @@ export default function ServicesListPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
   const { profile, loading: profileLoading } = useProfile();
+
+  // --- NEW: State สำหรับหมวดหมู่และการกรอง ---
+  const [serviceCategories, setServiceCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // --- NEW: โหลดหมวดหมู่บริการจาก settings ---
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesDoc = await getDoc(doc(db, 'settings', 'serviceCategories'));
+        if (categoriesDoc.exists()) {
+          const data = categoriesDoc.data();
+          setServiceCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // อัพเดทสถานะรายการโปรด
   const handleToggleFavorite = async (service) => {
@@ -154,6 +175,27 @@ export default function ServicesListPage() {
     return () => unsubscribe();
   }, []);
 
+  // --- NEW: ฟังก์ชันกรองบริการ ---
+  useEffect(() => {
+    let filtered = [...allServices];
+
+    // กรองตามหมวดหมู่
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(service => service.category === selectedCategory);
+    }
+
+    // กรองตามคำค้นหา
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(service => 
+        (service.serviceName || service.name || '').toLowerCase().includes(query) ||
+        (service.description || '').toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredServices(filtered);
+  }, [allServices, selectedCategory, searchQuery]);
+
   if (loading || profileLoading) return <div className="text-center mt-20">กำลังโหลดข้อมูลบริการ...</div>;
 
   return (
@@ -171,6 +213,46 @@ export default function ServicesListPage() {
         <Link href="/services/add" className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-slate-700">
           เพิ่มบริการ
         </Link>
+      </div>
+
+      {/* ฟิลเตอร์และการค้นหา */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* ค้นหา */}
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="🔍 ค้นหาบริการ (ชื่อ, รายละเอียด...)"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* กรองตามหมวดหมู่ */}
+          <div className="md:w-64">
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="all">📂 ทุกหมวดหมู่</option>
+              {serviceCategories.map(category => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+              <option value="uncategorized">ไม่มีหมวดหมู่</option>
+            </select>
+          </div>
+        </div>
+
+        {/* แสดงจำนวนผลลัพธ์ */}
+        <div className="mt-3 text-sm text-gray-600">
+          แสดง {filteredServices.length} จาก {allServices.length} บริการ
+          {selectedCategory !== 'all' && ` | หมวดหมู่: ${serviceCategories.find(c => c.id === selectedCategory)?.name || 'ไม่มีหมวดหมู่'}`}
+          {searchQuery && ` | ค้นหา: "${searchQuery}"`}
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -190,7 +272,14 @@ export default function ServicesListPage() {
                       </div>
                       <div>
                           <p className="font-bold text-lg text-gray-800">{service.serviceName || service.name}</p>
-                          <p className="text-xs text-gray-400">{service.category}</p>
+                          {/* แสดงแท็กหมวดหมู่ */}
+                          {service.category && (
+                            <div className="mt-1">
+                              <span className="inline-block bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-medium">
+                                {serviceCategories.find(c => c.id === service.category)?.name || service.category}
+                              </span>
+                            </div>
+                          )}
                       </div>
                       <div className="text-sm text-gray-600 mt-2 border-t pt-2 space-y-1">
                           <p className="truncate"><strong>รายละเอียด:</strong> {service.description || service.details || service.desc || 'ไม่มีรายละเอียด'}</p>

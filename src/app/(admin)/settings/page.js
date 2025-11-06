@@ -100,6 +100,11 @@ export default function AdminSettingsPage() {
         calendarId: ''
     });
 
+    // --- NEW STATE: เพิ่ม state สำหรับหมวดหมู่บริการ ---
+    const [serviceCategories, setServiceCategories] = useState([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategory, setEditingCategory] = useState(null);
+
     // --- NEW STATE: เพิ่ม state สำหรับ profile ---
     const [profileSettings, setProfileSettings] = useState({
         storeName: '',
@@ -126,10 +131,10 @@ export default function AdminSettingsPage() {
         const fetchInitialData = async () => {
             setLoading(true);
             try {
-                // เพิ่ม 'profile' เข้าไปใน list ที่จะดึงข้อมูล
-                const docsToFetch = ['notifications', 'booking', 'points', 'payment', 'calendar', 'profile'];
+                // เพิ่ม 'profile' และ 'serviceCategories' เข้าไปใน list ที่จะดึงข้อมูล
+                const docsToFetch = ['notifications', 'booking', 'points', 'payment', 'calendar', 'profile', 'serviceCategories'];
                 const promises = docsToFetch.map(id => getDoc(doc(db, 'settings', id)));
-                const [notificationsSnap, bookingSnap, _pointsSnap, paymentSnap, calendarSnap, profileSnap] = await Promise.all(promises);
+                const [notificationsSnap, bookingSnap, _pointsSnap, paymentSnap, calendarSnap, profileSnap, categoriesSnap] = await Promise.all(promises);
 
                 if (notificationsSnap.exists()) {
                     const data = notificationsSnap.data();
@@ -162,6 +167,11 @@ export default function AdminSettingsPage() {
                 if (calendarSnap.exists()) setCalendarSettings(prev => ({ ...prev, ...calendarSnap.data() }));
                 // ตั้งค่า state ของ profile
                 if (profileSnap.exists()) setProfileSettings(prev => ({ ...prev, ...profileSnap.data() }));
+                // ตั้งค่า state ของหมวดหมู่บริการ
+                if (categoriesSnap.exists()) {
+                    const data = categoriesSnap.data();
+                    setServiceCategories(data.categories || []);
+                }
                 
                 const adminResult = await fetchAllAdmins();
                 if (adminResult.success) setAllAdmins(adminResult.admins);
@@ -249,12 +259,28 @@ export default function AdminSettingsPage() {
             const { updatedAt: profUpdatedAt, ...profDataRaw } = profileSettings;
             const profData = { ...profDataRaw, logoUrl };
 
+            // --- NEW: เตรียมข้อมูลหมวดหมู่บริการ ---
+            const categoriesData = {
+                categories: serviceCategories,
+                updatedAt: new Date()
+            };
+
             const results = await Promise.all([
                 saveProfileSettings(profData),
                 saveNotificationSettings(notificationData),
                 saveBookingSettings(bookingData),
                 savePaymentSettings(paymentData),
-                saveCalendarSettings(calData)
+                saveCalendarSettings(calData),
+                // บันทึกหมวดหมู่บริการ
+                (async () => {
+                    try {
+                        const { doc, setDoc } = await import('firebase/firestore');
+                        await setDoc(doc(db, 'settings', 'serviceCategories'), categoriesData);
+                        return { success: true };
+                    } catch (err) {
+                        return { success: false, error: err.message };
+                    }
+                })()
             ]);
 
             if (results.every(r => r.success)) {
@@ -289,6 +315,65 @@ export default function AdminSettingsPage() {
         } finally {
             setIsSending(false);
         }
+    };
+
+    // --- ฟังก์ชันจัดการหมวดหมู่บริการ ---
+    const handleAddCategory = () => {
+        if (!newCategoryName.trim()) {
+            showToast('กรุณากรอกชื่อหมวดหมู่', 'error');
+            return;
+        }
+        const newCategory = {
+            id: Date.now().toString(),
+            name: newCategoryName.trim(),
+            order: serviceCategories.length
+        };
+        setServiceCategories([...serviceCategories, newCategory]);
+        setNewCategoryName('');
+        showToast('เพิ่มหมวดหมู่สำเร็จ (กรุณากดบันทึกการตั้งค่า)', 'success');
+    };
+
+    const handleEditCategory = (category) => {
+        setEditingCategory({ ...category });
+    };
+
+    const handleSaveEditCategory = () => {
+        if (!editingCategory?.name?.trim()) {
+            showToast('กรุณากรอกชื่อหมวดหมู่', 'error');
+            return;
+        }
+        setServiceCategories(prev => 
+            prev.map(cat => cat.id === editingCategory.id 
+                ? { ...cat, name: editingCategory.name.trim() }
+                : cat
+            )
+        );
+        setEditingCategory(null);
+        showToast('แก้ไขหมวดหมู่สำเร็จ (กรุณากดบันทึกการตั้งค่า)', 'success');
+    };
+
+    const handleDeleteCategory = (categoryId) => {
+        if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบหมวดหมู่นี้?')) return;
+        setServiceCategories(prev => prev.filter(cat => cat.id !== categoryId));
+        showToast('ลบหมวดหมู่สำเร็จ (กรุณากดบันทึกการตั้งค่า)', 'success');
+    };
+
+    const handleMoveCategoryUp = (index) => {
+        if (index === 0) return;
+        const newCategories = [...serviceCategories];
+        [newCategories[index - 1], newCategories[index]] = [newCategories[index], newCategories[index - 1]];
+        // อัพเดท order
+        newCategories.forEach((cat, idx) => cat.order = idx);
+        setServiceCategories(newCategories);
+    };
+
+    const handleMoveCategoryDown = (index) => {
+        if (index === serviceCategories.length - 1) return;
+        const newCategories = [...serviceCategories];
+        [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+        // อัพเดท order
+        newCategories.forEach((cat, idx) => cat.order = idx);
+        setServiceCategories(newCategories);
     };
 
     if (loading) return <div className="text-center p-10">กำลังโหลดการตั้งค่า...</div>;
@@ -356,6 +441,135 @@ export default function AdminSettingsPage() {
                         </div>
                     </SettingsCard>
                     
+                    <SettingsCard title="หมวดหมู่บริการ">
+                        <div className="space-y-3">
+                            <p className="text-xs text-gray-500">จัดการหมวดหมู่บริการเพื่อให้ง่ายต่อการจองและค้นหา</p>
+                            
+                            {/* ฟอร์มเพิ่มหมวดหมู่ใหม่ */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newCategoryName}
+                                    onChange={e => setNewCategoryName(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleAddCategory()}
+                                    placeholder="ชื่อหมวดหมู่ใหม่ (เช่น งานสร้าง)"
+                                    className="flex-1 border rounded-md px-2 py-1 text-sm"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddCategory}
+                                    className="bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 text-sm whitespace-nowrap"
+                                >
+                                    + เพิ่ม
+                                </button>
+                            </div>
+
+                            {/* รายการหมวดหมู่ */}
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                                {serviceCategories.length === 0 ? (
+                                    <div className="text-center text-gray-400 text-xs py-4">
+                                        ยังไม่มีหมวดหมู่บริการ
+                                    </div>
+                                ) : (
+                                    serviceCategories.map((category, index) => (
+                                        <div
+                                            key={category.id}
+                                            className="flex items-center gap-2 p-2 bg-gray-50 rounded border"
+                                        >
+                                            {/* ลำดับ */}
+                                            <div className="flex flex-col gap-0.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleMoveCategoryUp(index)}
+                                                    disabled={index === 0}
+                                                    className="text-gray-500 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="เลื่อนขึ้น"
+                                                >
+                                                    ▲
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleMoveCategoryDown(index)}
+                                                    disabled={index === serviceCategories.length - 1}
+                                                    className="text-gray-500 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="เลื่อนลง"
+                                                >
+                                                    ▼
+                                                </button>
+                                            </div>
+
+                                            {/* หมายเลขลำดับ */}
+                                            <div className="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-semibold text-xs">
+                                                {index + 1}
+                                            </div>
+
+                                            {/* ชื่อหมวดหมู่ */}
+                                            {editingCategory?.id === category.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={editingCategory.name}
+                                                    onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                                    onKeyPress={e => e.key === 'Enter' && handleSaveEditCategory()}
+                                                    className="flex-1 border rounded px-2 py-1 text-sm"
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                <div className="flex-1 font-medium text-gray-800 text-sm">
+                                                    {category.name}
+                                                </div>
+                                            )}
+
+                                            {/* ปุ่มจัดการ */}
+                                            <div className="flex gap-1">
+                                                {editingCategory?.id === category.id ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleSaveEditCategory}
+                                                            className="text-green-600 hover:text-green-700 px-2 py-1 text-xs"
+                                                        >
+                                                            ✓ บันทึก
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingCategory(null)}
+                                                            className="text-gray-500 hover:text-gray-700 px-2 py-1 text-xs"
+                                                        >
+                                                            ✕ ยกเลิก
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleEditCategory(category)}
+                                                            className="text-blue-600 hover:text-blue-700 px-2 py-1 text-xs"
+                                                            title="แก้ไข"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteCategory(category.id)}
+                                                            className="text-red-600 hover:text-red-700 px-2 py-1 text-xs"
+                                                            title="ลบ"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                                💡 <strong>คำแนะนำ:</strong> หมวดหมู่จะถูกนำไปใช้ในหน้าจัดการบริการ และหน้าจองบริการของลูกค้า ลำดับที่แสดงจะตามลำดับที่กำหนดไว้ที่นี่
+                            </div>
+                        </div>
+                    </SettingsCard>
+
                     <SettingsCard title="ข้อความแจ้งเตือนลูกค้าและคิวการจอง">
                         <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">ข้อความแจ้งเตือนลูกค้า (แสดงที่หน้าเลือกเวลา)</label>

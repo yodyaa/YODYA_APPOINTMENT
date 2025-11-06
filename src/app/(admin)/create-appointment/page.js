@@ -35,6 +35,7 @@ export default function CreateAppointmentPage() {
 
     // State for data from Firestore
     const [services, setServices] = useState([]);
+    const [serviceCategories, setServiceCategories] = useState([]);
     const [beauticians, setBeauticians] = useState([]);
     const [unavailableBeauticianIds, setUnavailableBeauticianIds] = useState(new Set());
     // State สำหรับการตั้งค่าการจอง
@@ -86,10 +87,20 @@ export default function CreateAppointmentPage() {
             setLoading(true);
             try {
                 // โหลดข้อมูลพื้นฐาน
-                const [settingsDoc, bookingSettingsDoc] = await Promise.all([
+                const [settingsDoc, bookingSettingsDoc, categoriesDoc] = await Promise.all([
                     getDoc(doc(db, 'settings', 'general')),
-                    getDoc(doc(db, 'settings', 'booking'))
+                    getDoc(doc(db, 'settings', 'booking')),
+                    getDoc(doc(db, 'settings', 'serviceCategories'))
                 ]);
+
+                // โหลดหมวดหมู่บริการ
+                if (categoriesDoc.exists()) {
+                    const data = categoriesDoc.data();
+                    console.log('📂 Service Categories loaded:', data.categories);
+                    setServiceCategories(data.categories || []);
+                } else {
+                    console.warn('⚠️ No serviceCategories document found');
+                }
 
                 // โหลดการตั้งค่าการจอง
                 if (bookingSettingsDoc.exists()) {
@@ -126,6 +137,13 @@ export default function CreateAppointmentPage() {
             (snapshot) => {
                 console.log('Services updated:', snapshot.docs.length);
                 const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // แสดงข้อมูล category ของแต่ละ service
+                console.log('📋 Services with categories:', allServices.map(s => ({
+                    name: s.serviceName,
+                    category: s.category,
+                    isFavorite: s.isFavorite
+                })));
                 
                 // เรียงลำดับ: รายการโปรดก่อน (isFavorite: true) แล้วตามด้วยชื่อบริการ
                 const sortedServices = allServices.sort((a, b) => {
@@ -238,27 +256,24 @@ export default function CreateAppointmentPage() {
     useEffect(() => {
         const fetchMonthBusyDays = async () => {
             const year = activeMonth.getFullYear();
-            const month = activeMonth.getMonth();
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const daysInMonth = lastDay.getDate();
-            const busyMap = {};
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day, 7, 0, 0);
-                const dateStr = format(date, 'yyyy-MM-dd');
-                try {
-                    const docRef = doc(db, 'dayBookingStatus', dateStr);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        busyMap[dateStr] = docSnap.data().isBusy ?? false;
-                    } else {
-                        busyMap[dateStr] = false;
+            const month = activeMonth.getMonth() + 1; // month is 0-indexed
+            // Query all busy days for this month in one request
+            const monthPrefix = `${year}-${month.toString().padStart(2, '0')}`;
+            try {
+                const q = query(collection(db, 'dayBookingStatus'), orderBy('date'));
+                const querySnapshot = await getDocs(q);
+                const busyMap = {};
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.date && data.date.startsWith(monthPrefix)) {
+                        busyMap[data.date] = data.isBusy ?? false;
                     }
-                } catch {
-                    busyMap[dateStr] = false;
-                }
+                });
+                setBusyDays(busyMap);
+            } catch (error) {
+                console.error('Error fetching busy days:', error);
+                setBusyDays({});
             }
-            setBusyDays(busyMap);
         };
         fetchMonthBusyDays();
     }, [activeMonth]);
@@ -630,35 +645,36 @@ export default function CreateAppointmentPage() {
                             
                             {/* รายการโปรด */}
                             {services.filter(s => s.isFavorite).length > 0 && (
-                                <>
-                                    <optgroup label="⭐ รายการโปรด">
-                                        {services
-                                            .filter(s => s.isFavorite)
-                                            .map(s => (
-                                                <option 
-                                                    key={s.id} 
-                                                    value={s.id}
-                                                    disabled={s.status === 'unavailable'}
-                                                    style={{ 
-                                                        color: s.status === 'unavailable' ? '#999' : 'inherit',
-                                                        fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
-                                                    }}
-                                                >
-                                                    ⭐ {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
-                                                </option>
-                                            ))
-                                        }
-                                    </optgroup>
-                                </>
+                                <optgroup label="⭐ รายการโปรด">
+                                    {services
+                                        .filter(s => s.isFavorite)
+                                        .map(s => (
+                                            <option 
+                                                key={s.id} 
+                                                value={s.id}
+                                                disabled={s.status === 'unavailable'}
+                                                style={{ 
+                                                    color: s.status === 'unavailable' ? '#999' : 'inherit',
+                                                    fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
+                                                }}
+                                            >
+                                                ⭐ {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
+                                            </option>
+                                        ))
+                                    }
+                                </optgroup>
                             )}
                             
-                            {/* บริการทั้งหมด */}
-                            {services.filter(s => !s.isFavorite).length > 0 && (
-                                <>
-                                    <optgroup label="บริการทั้งหมด">
-                                        {services
-                                            .filter(s => !s.isFavorite)
-                                            .map(s => (
+                            {/* แสดงตามหมวดหมู่ */}
+                            {serviceCategories
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map(category => {
+                                    const servicesInCategory = services.filter(s => !s.isFavorite && s.category === category.id);
+                                    if (servicesInCategory.length === 0) return null;
+                                    
+                                    return (
+                                        <optgroup key={category.id} label={`📂 ${category.name}`}>
+                                            {servicesInCategory.map(s => (
                                                 <option 
                                                     key={s.id} 
                                                     value={s.id}
@@ -670,10 +686,32 @@ export default function CreateAppointmentPage() {
                                                 >
                                                     {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
                                                 </option>
-                                            ))
-                                        }
-                                    </optgroup>
-                                </>
+                                            ))}
+                                        </optgroup>
+                                    );
+                                })
+                            }
+                            
+                            {/* บริการที่ไม่มีหมวดหมู่ */}
+                            {services.filter(s => !s.isFavorite && !s.category).length > 0 && (
+                                <optgroup label="📋 บริการอื่นๆ">
+                                    {services
+                                        .filter(s => !s.isFavorite && !s.category)
+                                        .map(s => (
+                                            <option 
+                                                key={s.id} 
+                                                value={s.id}
+                                                disabled={s.status === 'unavailable'}
+                                                style={{ 
+                                                    color: s.status === 'unavailable' ? '#999' : 'inherit',
+                                                    fontStyle: s.status === 'unavailable' ? 'italic' : 'normal'
+                                                }}
+                                            >
+                                                {s.serviceName} {s.status === 'unavailable' ? '(งดให้บริการ)' : ''}
+                                            </option>
+                                        ))
+                                    }
+                                </optgroup>
                             )}
                         </select>
                         {services.length > 0 && (
@@ -681,6 +719,9 @@ export default function CreateAppointmentPage() {
                                 ทั้งหมด {services.length} บริการ
                                 {services.filter(s => s.isFavorite).length > 0 && (
                                     <span className="text-yellow-600"> | ⭐ รายการโปรด {services.filter(s => s.isFavorite).length}</span>
+                                )}
+                                {serviceCategories.length > 0 && (
+                                    <span className="text-indigo-600"> | 📂 {serviceCategories.length} หมวดหมู่</span>
                                 )} | 
                                 <span className="text-green-600"> เปิดให้บริการ {services.filter(s => s.status === 'available').length}</span> | 
                                 <span className="text-red-600"> งดให้บริการ {services.filter(s => s.status === 'unavailable' || !s.status).length}</span>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, storage } from '@/app/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/app/components/Toast';
 import { useProfile } from '@/context/ProfileProvider';
@@ -14,15 +14,33 @@ export default function AddServicePage() {
     serviceName: '',
     imageUrl: '',
     details: '',
+    category: '', // เพิ่มฟิลด์หมวดหมู่
     addOnServices: []
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [serviceCategories, setServiceCategories] = useState([]); // เพิ่ม state สำหรับหมวดหมู่
   const router = useRouter();
   const { showToast } = useToast();
   const { profile } = useProfile();
+
+  // โหลดหมวดหมู่บริการจาก settings
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesDoc = await getDoc(doc(db, 'settings', 'serviceCategories'));
+        if (categoriesDoc.exists()) {
+          const data = categoriesDoc.data();
+          setServiceCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -145,6 +163,30 @@ export default function AddServicePage() {
           <label className="block text-sm font-medium text-gray-700">ชื่อบริการ</label>
           <input name="serviceName" value={formData.serviceName} onChange={handleChange} placeholder="เช่น ตัดผมชาย" required className="w-full mt-1 p-2 border rounded-md" />
         </div>
+
+        {/* ฟิลด์หมวดหมู่ */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่บริการ</label>
+          <select
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            className="w-full mt-1 p-2 border rounded-md bg-white"
+          >
+            <option value="">-- เลือกหมวดหมู่ (ไม่บังคับ) --</option>
+            {serviceCategories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          {serviceCategories.length === 0 && (
+            <p className="text-xs text-gray-500 mt-1">
+              ยังไม่มีหมวดหมู่ สามารถเพิ่มได้ที่ <a href="/settings" className="text-blue-600 underline">หน้าตั้งค่า</a>
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพบริการ</label>
           <div className="space-y-3">
