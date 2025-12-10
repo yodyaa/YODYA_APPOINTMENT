@@ -51,6 +51,12 @@ export default function WorkorderAdminPage() {
   const [productivityThreshold, setProductivityThreshold] = useState(1000); // Productivity ต่อช่างที่แอดมินกำหนด
   const [dailyProductivitySettings, setDailyProductivitySettings] = useState({}); // จำ productivity แต่ละวัน
 
+  // State สำหรับ Export Modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDates, setExportDates] = useState([]);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
+
   // Sync selectedDate with ?date=... query string
   const searchParams = useSearchParams();
   useEffect(() => {
@@ -478,6 +484,100 @@ export default function WorkorderAdminPage() {
     }
   };
 
+  // ฟังก์ชัน Export ข้อมูล
+  const handleExport = () => {
+    let datesToExport = [];
+    
+    // ถ้าเลือกช่วงวันที่
+    if (exportStartDate && exportEndDate) {
+      const start = new Date(exportStartDate);
+      const end = new Date(exportEndDate);
+      const current = new Date(start);
+      while (current <= end) {
+        datesToExport.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (exportDates.length > 0) {
+      datesToExport = [...exportDates];
+    } else {
+      alert('กรุณาเลือกวันที่ที่ต้องการส่งออก');
+      return;
+    }
+
+    // กรอง workorders ตามวันที่เลือก
+    const exportData = datesToExport.map(dateStr => {
+      const dayWorkorders = workorders.filter(w => w.date === dateStr);
+      const sortedWorkorders = sortByCaseNumber(dayWorkorders);
+      return {
+        date: dateStr,
+        dateFormatted: new Date(dateStr).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        workorders: sortedWorkorders.map(w => {
+          const service = services.find(s => s.serviceName === w.workorder || s.name === w.workorder);
+          const price = w.price !== undefined && w.price !== null && w.price !== '' ? w.price : (service?.price || 0);
+          return {
+            caseNumber: w.caseNumber || '-',
+            time: w.time || '-',
+            flexibility: w.flexibility || '-',
+            customerName: w.type === 'appointment' ? (w.customerInfo?.fullName || '-') : (w.name || '-'),
+            service: w.type === 'appointment' ? (w.serviceInfo?.name || w.workorder || '-') : (w.workorder || '-'),
+            price: price,
+            processStatus: w.processStatus || '-',
+            paymentStatus: w.type === 'appointment' ? (w.paymentInfo?.paymentStatus || '-') : (w.paymentStatus || '-'),
+            beautician: w.type === 'appointment' ? (w.appointmentInfo?.beauticianName || '-') : (w.beauticianName || w.responsible || '-')
+          };
+        })
+      };
+    });
+
+    // สร้าง CSV content
+    let csvContent = '\uFEFF'; // BOM for UTF-8
+    
+    exportData.forEach(dayData => {
+      csvContent += `\n=== ${dayData.dateFormatted} ===\n`;
+      csvContent += 'เคสที่,เวลา,ความยืดหยุ่น,ลูกค้า,บริการ,ราคา,สถานะงาน,สถานะเก็บเงิน,ช่าง\n';
+      
+      if (dayData.workorders.length === 0) {
+        csvContent += 'ไม่มีงานในวันนี้\n';
+      } else {
+        dayData.workorders.forEach(wo => {
+          csvContent += `${wo.caseNumber},${wo.time},${wo.flexibility},"${wo.customerName}","${wo.service}",${wo.price},${wo.processStatus},${wo.paymentStatus},"${wo.beautician}"\n`;
+        });
+        // สรุปรายได้
+        const totalRevenue = dayData.workorders.reduce((sum, wo) => sum + Number(wo.price || 0), 0);
+        csvContent += `,,,,รวม,"${totalRevenue.toLocaleString()} บาท",,,\n`;
+      }
+    });
+
+    // ดาวน์โหลดไฟล์
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const fileName = datesToExport.length === 1 
+      ? `workorder_${datesToExport[0]}.csv`
+      : `workorder_${datesToExport[0]}_to_${datesToExport[datesToExport.length - 1]}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setShowExportModal(false);
+    setExportDates([]);
+    setExportStartDate('');
+    setExportEndDate('');
+  };
+
+  // เพิ่มหรือลบวันที่ออกจากรายการ export
+  const toggleExportDate = (dateStr) => {
+    setExportDates(prev => 
+      prev.includes(dateStr) 
+        ? prev.filter(d => d !== dateStr)
+        : [...prev, dateStr].sort()
+    );
+  };
+
   // บันทึกการตั้งค่า productivity ต่อช่าง
   const handleProductivityChange = async (newProductivity) => {
     setProductivityThreshold(newProductivity);
@@ -513,7 +613,119 @@ export default function WorkorderAdminPage() {
         >
           รีเฟรช
         </button>
+        <button 
+          onClick={() => {
+            setShowExportModal(true);
+            setExportStartDate(selectedDateStr);
+            setExportEndDate(selectedDateStr);
+          }} 
+          className="bg-orange-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-orange-700"
+        >
+          📥 Export
+        </button>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">📥 ส่งออกข้อมูลคิวงาน</h2>
+            
+            {/* เลือกแบบช่วงวันที่ */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">เลือกช่วงวันที่</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={e => setExportStartDate(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 flex-1"
+                />
+                <span className="text-gray-500">ถึง</span>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={e => setExportEndDate(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 flex-1"
+                />
+              </div>
+            </div>
+
+            {/* แสดงจำนวนวันที่เลือก */}
+            {exportStartDate && exportEndDate && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  📅 จะส่งออกข้อมูลตั้งแต่ <strong>{new Date(exportStartDate).toLocaleDateString('th-TH')}</strong> ถึง <strong>{new Date(exportEndDate).toLocaleDateString('th-TH')}</strong>
+                  {' '}({Math.ceil((new Date(exportEndDate) - new Date(exportStartDate)) / (1000 * 60 * 60 * 24)) + 1} วัน)
+                </p>
+              </div>
+            )}
+
+            {/* ปุ่มเลือกด่วน */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">เลือกด่วน</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setExportStartDate(selectedDateStr);
+                    setExportEndDate(selectedDateStr);
+                  }}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                >
+                  วันนี้ที่เลือก
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const startOfWeek = new Date(today);
+                    startOfWeek.setDate(today.getDate() - today.getDay());
+                    const endOfWeek = new Date(startOfWeek);
+                    endOfWeek.setDate(startOfWeek.getDate() + 6);
+                    setExportStartDate(startOfWeek.toISOString().split('T')[0]);
+                    setExportEndDate(endOfWeek.toISOString().split('T')[0]);
+                  }}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                >
+                  สัปดาห์นี้
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    setExportStartDate(startOfMonth.toISOString().split('T')[0]);
+                    setExportEndDate(endOfMonth.toISOString().split('T')[0]);
+                  }}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                >
+                  เดือนนี้
+                </button>
+              </div>
+            </div>
+
+            {/* ปุ่ม Actions */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowExportModal(false);
+                  setExportDates([]);
+                  setExportStartDate('');
+                  setExportEndDate('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-semibold hover:bg-gray-300"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md font-semibold hover:bg-orange-700"
+              >
+                📥 ดาวน์โหลด CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Date Picker และการตั้งค่า */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -608,6 +820,7 @@ export default function WorkorderAdminPage() {
                     <th className="p-2 border font-normal">สถานะ</th>
                     <th className="p-2 border font-normal">เคสที่</th>
                     <th className="p-2 border font-normal">เวลา</th>
+                    <th className="p-2 border font-normal">ความยืดหยุ่น</th>
                     <th className="p-2 border font-normal">ลูกค้า</th>
                     <th className="p-2 border font-normal">บริการ</th>
                     <th className="p-2 border font-normal">ราคา (บาท)</th>
@@ -619,7 +832,7 @@ export default function WorkorderAdminPage() {
                 <tbody>
                   {selectedDayWorkorders.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="text-center p-4 text-gray-400 text-sm">
+                      <td colSpan={11} className="text-center p-4 text-gray-400 text-sm">
                         ไม่มีงานในวันที่เลือก
                       </td>
                     </tr>
@@ -713,6 +926,24 @@ export default function WorkorderAdminPage() {
                               className="border rounded px-2 py-1 w-20 text-center"
                               placeholder="เวลา"
                             />
+                          </td>
+                          {/* ความยืดหยุ่น */}
+                          <td className="p-2 border text-center">
+                            <select
+                              value={w.flexibility || ''}
+                              onChange={e => handleInlineEdit(w.id, 'flexibility', e.target.value)}
+                              className={`px-2 py-1 rounded text-sm font-medium w-full ${
+                                w.flexibility === 'Strict' ? 'bg-red-100 text-red-800' :
+                                w.flexibility === 'Window' ? 'bg-yellow-100 text-yellow-800' :
+                                w.flexibility === 'Anytime' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <option value="">เลือก</option>
+                              <option value="Strict">Strict</option>
+                              <option value="Window">Window</option>
+                              <option value="Anytime">Anytime</option>
+                            </select>
                           </td>
                           {/* ลูกค้า */}
                           <td className="p-2 border">
@@ -855,6 +1086,7 @@ export default function WorkorderAdminPage() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 font-semibold text-sm">
+                    <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>
                     <td className="p-2 border text-center">-</td>

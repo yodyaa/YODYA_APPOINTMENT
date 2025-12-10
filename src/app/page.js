@@ -171,12 +171,13 @@ export default function LoginPage() {
 
     } catch (error) {
       // 6. จัดการข้อผิดพลาดในการล็อกอิน
-      console.error("Admin login failed:", error.code, error.message);
       let errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-      } else if (error.code === 'auth/invalid-credential') {
-        errorMessage = "ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง กรุณาตรวจสอบอีเมลและรหัสผ่านอีกครั้ง";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "มีการพยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่แล้วลองใหม่";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "รูปแบบอีเมลไม่ถูกต้อง";
       }
       setError(errorMessage);
     } finally {
@@ -188,7 +189,8 @@ export default function LoginPage() {
     <main className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
 
-        {/* LINE Admin Login Section */}
+        {/* LINE Admin Login Section - ซ่อนไว้ไม่ใช้งาน */}
+        {/* 
         <div className="p-6 border rounded-lg bg-green-50">
           <h2 className="text-xl font-semibold text-center text-gray-700 mb-4">เข้าสู่ระบบผู้ดูแลด้วย LINE</h2>
           <p className="text-sm text-gray-600 text-center mb-4">
@@ -196,7 +198,6 @@ export default function LoginPage() {
             <span className="text-xs text-gray-500">ใช้งานได้ทั้งใน LINE App และ Browser</span>
           </p>
           
-          {/* แสดงสถานะการโหลด LIFF */}
           {liffLoading && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex items-center justify-center gap-2">
@@ -249,6 +250,7 @@ export default function LoginPage() {
             )}
           </button>
         </div>
+        */}
 
         {/* Email Admin Section */}
         <div className="p-6 border rounded-lg">
