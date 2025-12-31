@@ -97,6 +97,19 @@ export async function GET(request) {
       ...doc.data()
     }));
 
+    // ดึง daily settings สำหรับจำนวนช่างและ productivity
+    const staffSettingsSnapshot = await getDocs(collection(db, "dailyStaffSettings"));
+    const staffSettings = {};
+    staffSettingsSnapshot.docs.forEach(doc => {
+      staffSettings[doc.id] = doc.data().staffCount || 3;
+    });
+
+    const productivitySettingsSnapshot = await getDocs(collection(db, "dailyProductivitySettings"));
+    const productivitySettings = {};
+    productivitySettingsSnapshot.docs.forEach(doc => {
+      productivitySettings[doc.id] = doc.data().productivityThreshold || 1000;
+    });
+
     // กรองข้อมูลตามวันที่
     const exportData = datesToExport.map(dateStr => {
       // กรอง workorders
@@ -118,6 +131,8 @@ export async function GET(request) {
           day: 'numeric' 
         }),
         totalItems: sortedItems.length,
+        staffCount: staffSettings[dateStr] || 3,
+        productivityThreshold: productivitySettings[dateStr] || 1000,
         items: sortedItems.map(w => {
           const service = services.find(s => s.serviceName === w.workorder || s.name === w.workorder);
           const price = w.price !== undefined && w.price !== null && w.price !== '' 
